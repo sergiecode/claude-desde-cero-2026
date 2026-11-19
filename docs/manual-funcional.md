@@ -51,7 +51,7 @@ El sistema cotiza cuatro tipos de vehículo con un único cotizador: **auto, mot
 
 ## 4. Información disponible desde el inicio
 
-Al iniciar, el sistema ya cuenta con esta información (el detalle está en `relevamiento.md`, sección 5):
+Al iniciar, el sistema ya cuenta con esta información (el detalle está en `relevamiento.md`, sección 4):
 
 | Información | Contenido |
 | --- | --- |

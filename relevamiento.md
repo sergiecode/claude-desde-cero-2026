@@ -65,23 +65,9 @@ Lo central del sistema es **el cotizador**. Usuarios, clientes y catálogos de v
 
 ---
 
-## 3. Cambios respecto del documento inicial
+## 3. Datos relevados
 
-| Documento inicial | Queda así |
-| --- | --- |
-| El productor carga los datos del cliente a mano | Los clientes vienen precargados; el productor solo busca por documento |
-| La provincia se elige antes que la localidad | No hay selección: la ubicación sale del domicilio del cliente |
-| Alta y consulta de usuarios | Los productores vienen precargados; solo existe el login |
-| Coberturas individuales por tipo de vehículo | Un plan elegido de un desplegable; las coberturas son solo la descripción del plan |
-| Estado DRAFT de cotización | Eliminado |
-| Estados PENDING_PAYMENT y CANCELLED de póliza | Eliminados |
-| Ejemplo de cálculo solo con factor geográfico | Cálculo completo con 4 factores, tasa del plan e impuestos |
-
----
-
-## 4. Datos relevados
-
-### 4.1. Tipos de uso por tipo de vehículo
+### 3.1. Tipos de uso por tipo de vehículo
 
 | Tipo de uso | AUTO | MOTO | CAMIONETA | CAMION |
 | --- | --- | --- | --- | --- |
@@ -93,7 +79,7 @@ Lo central del sistema es **el cotizador**. Usuarios, clientes y catálogos de v
 | Agrícola | No | No | Sí | Sí |
 | Delivery | Sí | Sí | Sí | No |
 
-### 4.2. Planes
+### 3.2. Planes
 
 | Plan | Qué cubre (descripción) | Tasa mensual sobre la suma asegurada |
 | --- | --- | --- |
@@ -101,7 +87,7 @@ Lo central del sistema es **el cotizador**. Usuarios, clientes y catálogos de v
 | Terceros completo | RC + robo e incendio totales y parciales + destrucción total + granizo + cristales | 0,25 % |
 | Todo riesgo | Terceros completo + daños parciales al propio vehículo | 0,45 % |
 
-### 4.3. Factores de cálculo
+### 3.3. Factores de cálculo
 
 **Factor geográfico** (según la localidad del cliente)
 
@@ -149,7 +135,7 @@ Lo central del sistema es **el cotizador**. Usuarios, clientes y catálogos de v
 
 **Impuestos:** 21 % sobre la prima mensual.
 
-### 4.4. Valuación (suma asegurada)
+### 3.4. Valuación (suma asegurada)
 
 Cada versión de vehículo tiene un **valor 0 km de referencia**. A partir de él:
 
@@ -160,9 +146,9 @@ Cada versión de vehículo tiene un **valor 0 km de referencia**. A partir de é
 
 ---
 
-## 5. Datos precargados
+## 4. Datos precargados
 
-### 5.1. Productores
+### 4.1. Productores
 
 | Nombre | Email (usuario) | Contraseña de demo | Matrícula |
 | --- | --- | --- | --- |
@@ -171,7 +157,7 @@ Cada versión de vehículo tiene un **valor 0 km de referencia**. A partir de é
 
 Dos productores permiten mostrar que cada uno ve solo sus cotizaciones.
 
-### 5.2. Clientes
+### 4.2. Clientes
 
 | Documento | Cliente | Nacimiento | Edad* | Localidad (provincia) | Zona |
 | --- | --- | --- | --- | --- | --- |
@@ -186,7 +172,7 @@ Dos productores permiten mostrar que cada uno ve solo sus cotizaciones.
 
 Todos tienen además email, teléfono, domicilio y código postal ficticios.
 
-### 5.3. Ubicaciones
+### 4.3. Ubicaciones
 
 | Provincia | Localidad | Zona |
 | --- | --- | --- |
@@ -201,7 +187,7 @@ Todos tienen además email, teléfono, domicilio y código postal ficticios.
 | Santa Fe | Rosario | ZONA_5 |
 | Mendoza | Mendoza | ZONA_7 |
 
-### 5.4. Catálogo de vehículos
+### 4.4. Catálogo de vehículos
 
 3 marcas × 2 modelos por tipo. Cada modelo tiene 2 versiones: **Base** (valor de la tabla) y **Full** (valor Base × 1,15). En total: 24 modelos y 48 versiones.
 
@@ -238,7 +224,7 @@ Los modelos con "Disponible desde" posterior a 2010 sirven para mostrar que el c
 
 ---
 
-## 6. Fuera de alcance
+## 5. Fuera de alcance
 
 - Pagos y medios de pago
 - Generación de PDF de la cotización o de la póliza
@@ -251,7 +237,7 @@ Los modelos con "Disponible desde" posterior a 2010 sirven para mostrar que el c
 
 ---
 
-## 7. Simplificaciones respecto de la realidad
+## 6. Simplificaciones respecto de la realidad
 
 Para que el ejercicio sea manejable se simplificaron algunos aspectos del negocio real:
 
