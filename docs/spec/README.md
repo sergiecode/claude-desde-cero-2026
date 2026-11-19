@@ -34,6 +34,7 @@ Esta carpeta describe **cómo se construye** el sistema. **Qué hace** el sistem
 | Documentación API | springdoc-openapi | Versión compatible con Spring Boot 4.1 |
 | Frontend | Angular | 22 |
 | Frontend | Angular Material | 22 |
+| Frontend | Formularios | Signal Forms (`@angular/forms/signals`) |
 | Frontend | TypeScript | La requerida por Angular 22 (6.0.x) |
 | Frontend | Node.js | 22.22.3 o superior (o 24.15.0 o superior) |
 | Contenedores | Docker Compose | Solo para PostgreSQL |
@@ -49,6 +50,8 @@ Un solo repositorio:
 ```
 cotizador/
 ├── CLAUDE.md
+├── .env.example
+├── .gitignore
 ├── docker-compose.yml
 ├── relevamiento.md
 ├── docs/
@@ -73,11 +76,25 @@ La estructura interna de cada proyecto está en `backend.md` y `frontend.md`.
 
 | Paso | Comando (desde la raíz) | Resultado |
 | --- | --- | --- |
+| 0. Variables | `cp .env.example .env` y completar los valores | Archivo `.env` local (no se sube a git) |
 | 1. Base de datos | `docker compose up -d` | PostgreSQL en `localhost:5432` |
 | 2. Backend | `cd backend && ./mvnw spring-boot:run` | API en `http://localhost:8080`. Flyway crea las tablas y carga los datos al arrancar |
 | 3. Frontend | `cd frontend && npm install && npm start` | App en `http://localhost:4200` |
 
-**`docker-compose.yml`**: un único servicio `postgres` (imagen `postgres:17`), base `cotizador`, usuario `cotizador`, contraseña `cotizador`, puerto `5432`, con un volumen con nombre para persistir los datos.
+**`docker-compose.yml`**: un único servicio `postgres` (imagen `postgres:17`), puerto `5432`, con un volumen con nombre para persistir los datos. Base, usuario y contraseña se leen del `.env` (`POSTGRES_DB=${DB_NAME}`, `POSTGRES_USER=${DB_USER}`, `POSTGRES_PASSWORD=${DB_PASSWORD}`).
+
+**Variables de entorno (`.env`, en la raíz):**
+
+| Variable | Uso | Valor en `.env.example` |
+| --- | --- | --- |
+| `DB_NAME` | Nombre de la base | `cotizador` |
+| `DB_USER` | Usuario de la base | `cotizador` |
+| `DB_PASSWORD` | Contraseña de la base | `cambiar` |
+| `JWT_SECRET` | Clave para firmar los tokens (al menos 32 caracteres) | `cambiar-por-una-clave-de-al-menos-32-caracteres` |
+
+- `.env` está en `.gitignore` y **nunca** se sube al repositorio. `.env.example` sí se sube, sin valores reales.
+- Docker Compose lee `.env` automáticamente. El backend lo importa desde la raíz (`backend.md` §3).
+- Si falta una variable, el backend no arranca (no hay valores por defecto para secretos).
 
 **Swagger UI:** `http://localhost:8080/swagger-ui.html`.
 
@@ -130,5 +147,5 @@ Las reglas del manual tienen código (C1, V4, S2, Q3, E2…). Donde una validaci
 - Endpoints de coberturas sueltas y de provincias o localidades.
 - Pagos, PDF, emails, anulación de pólizas.
 - Paginación de listados (el volumen de datos es chico).
-- Tests end-to-end del frontend.
+- Tests end-to-end automatizados (código de Playwright en el repo). Sí se hace una prueba exploratoria con un agente que usa el navegador (`frontend.md` §8).
 - Despliegue a un servidor: solo se ejecuta en local.

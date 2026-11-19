@@ -9,6 +9,13 @@ Cada criterio tiene un resultado esperado concreto. Una etapa se considera termi
 
 ---
 
+## 0. Proyecto y base de datos
+
+| ID | Capa | Dado | Resultado esperado |
+| --- | --- | --- | --- |
+| AC-SETUP-01 | B/F | Repositorio recién clonado, `.env` creado a partir de `.env.example` | `docker compose up -d` levanta PostgreSQL · el backend arranca y `GET /v3/api-docs` responde `200` · `ng build` del frontend termina sin errores · `npm start` muestra la pantalla de login |
+| AC-SETUP-02 | B | Base vacía y backend arrancando | Flyway aplica V1 a V4 sin errores · `ddl-auto: validate` no falla · hay 7 zonas, 10 ciudades, 3 planes, 12 marcas, 24 modelos, 48 versiones, 2 productores y 6 clientes |
+
 ## 1. Precio (manual §7)
 
 | ID | Capa | Dado | Resultado esperado | Reglas |
@@ -57,6 +64,12 @@ Cada criterio tiene un resultado esperado concreto. Una etapa se considera termi
 | AC-VEH-09 | B | Datos de AC-PRICE-01 con modelo Polo (4), versión 7, año 2015 | `400 INVALID_VEHICLE` | V4 |
 | AC-VEH-10 | B | Patente `AB123CD` | `400 INVALID_PATENT` | V6 |
 | AC-VEH-11 | B | Patente ` abc123 ` | Se acepta y se guarda como `ABC123` | V6 |
+
+### 4.1. Planes
+
+| ID | Capa | Dado | Resultado esperado | Reglas |
+| --- | --- | --- | --- | --- |
+| AC-PLAN-01 | B | `GET /api/insurance-plans` | 3 planes en este orden: RC, TERCEROS_COMPLETO, TODO_RIESGO, cada uno con `id`, `code`, `name` y `description`, y **sin** la tasa | P1, P2 |
 
 ## 5. Cotización (Q1–Q7)
 
@@ -114,17 +127,41 @@ Cada criterio tiene un resultado esperado concreto. Una etapa se considera termi
 | AC-FE-07 | F | `labels.ts` | Todos los códigos de todos los enums tienen etiqueta en español | — |
 | AC-FE-08 | F | Patente escrita `abc123` | El campo muestra `ABC123` | V6 |
 
+### 8.1. Prueba exploratoria (agente `qa-e2e`, en el navegador)
+
+Requisitos: base de datos recién creada (`docker compose down -v` y volver a levantar), backend y frontend corriendo. Se ejecutan en orden. Resultado: un informe con ✓ o ✗ por escenario, lo observado y una captura de pantalla.
+
+| ID | Escenario | Resultado esperado |
+| --- | --- | --- |
+| AC-E2E-01 | Ingresar con Ana Torres | Se ve "Mis cotizaciones" con el mensaje "Todavía no tenés cotizaciones" |
+| AC-E2E-02 | Nueva cotización: buscar DNI 99999999 | "Cliente no encontrado"; los bloques de vehículo y plan siguen deshabilitados |
+| AC-E2E-03 | Buscar DNI 30123456; elegir tipo Auto y revisar los tipos de uso; cambiar a Moto | Auto: Particular, Comercial, Taxi / remís, Delivery. Moto: Particular, Comercial, Delivery |
+| AC-E2E-04 | Completar los datos de AC-PRICE-01 (patente ABC123) y cotizar | El desglose muestra prima mensual $ 46.332,00 y total mensual $ 56.061,72; aparece "Guardar cotización" |
+| AC-E2E-05 | Cambiar la patente a ABC124 | El resultado desaparece y "Guardar cotización" se oculta |
+| AC-E2E-06 | Volver a cotizar y guardar | Detalle de la cotización COT-AAAA-000001 en estado Calculada |
+| AC-E2E-07 | Emitir póliza con fecha de inicio hoy | Detalle de la póliza POL-AAAA-000001, estado Activa, vigencia de un año |
+| AC-E2E-08 | Volver al detalle de la cotización | Estado Emitida, enlace a la póliza y "Emitir póliza" deshabilitado |
+| AC-E2E-09 | Salir e ingresar con Diego Sosa; abrir la URL de la cotización de Ana | "Mis cotizaciones" vacío; la URL muestra "Cotización no encontrada" |
+
+`AAAA` es el año en curso.
+
 ---
 
 ## 9. Criterios por etapa
 
-| Etapa (documento inicial) | Criterios |
-| --- | --- |
-| 1–2. Proyecto, entidades y base | El backend arranca, Flyway aplica V1–V4 y `ddl-auto: validate` no falla |
-| 3. Usuarios y autenticación | AC-AUTH-01 a 05 |
-| 4. Clientes | AC-CLI-01 a 07 |
-| 5–6. Catálogos y formularios | AC-VEH-01 a 05 · AC-FE-01, 02, 07, 08 |
-| 7–8. Planes, suma asegurada y valuaciones | AC-VAL-01 a 03 y 06 |
-| 9. Tarifas y cálculo | AC-PRICE-01 a 05 · AC-VAL-04, 05 · AC-VEH-06 a 11 · AC-FE-06 |
-| 10. Cotizaciones | AC-QUO-01 a 09 · AC-FE-03, 04 |
-| 11. Emisión de pólizas | AC-POL-01 a 14 · AC-FE-05 |
+Las etapas son las de la sección 11 del documento inicial del negocio. `/implementar-etapa <n>` implementa la etapa *n* y la da por terminada cuando pasan todos sus criterios.
+
+| Etapa | Nombre | Criterios |
+| --- | --- | --- |
+| 1 | Creación del proyecto Java y Angular | AC-SETUP-01 |
+| 2 | Modelado de entidades y base de datos | AC-SETUP-02 |
+| 3 | Usuarios y autenticación | AC-AUTH-01 a 05 |
+| 4 | Clientes | AC-CLI-01 a 07 · AC-FE-01 |
+| 5 | Catálogos de vehículos | AC-VEH-01 a 05 |
+| 6 | Reglas condicionales de formularios | AC-FE-02, AC-FE-07, AC-FE-08 |
+| 7 | Coberturas y planes | AC-PLAN-01 |
+| 8 | Suma asegurada y valuaciones | AC-VAL-01 a 03 · AC-VAL-06 |
+| 9 | Tarifas y cálculo de precios | AC-PRICE-01 a 05 · AC-VAL-04, 05 · AC-VEH-06 a 11 · AC-FE-06 |
+| 10 | Creación y consulta de cotizaciones | AC-QUO-01 a 09 · AC-FE-03, AC-FE-04 |
+| 11 | Emisión de pólizas | AC-POL-01 a 14 · AC-FE-05 |
+| Cierre | Prueba exploratoria | AC-E2E-01 a 09 |

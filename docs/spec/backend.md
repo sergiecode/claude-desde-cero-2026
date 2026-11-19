@@ -76,10 +76,12 @@ com.cotizador
 
 ```yaml
 spring:
+  config:
+    import: optional:file:../.env[.properties]   # .env de la raíz del repo
   datasource:
-    url: jdbc:postgresql://localhost:5432/cotizador
-    username: cotizador
-    password: cotizador
+    url: jdbc:postgresql://localhost:5432/${DB_NAME}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -90,7 +92,7 @@ spring:
 app:
   timezone: America/Argentina/Buenos_Aires
   jwt:
-    secret: ${JWT_SECRET:cambiar-este-secreto-de-desarrollo-de-al-menos-32-bytes}
+    secret: ${JWT_SECRET}
     expiration: 8h
   pricing:
     tax-rate: 0.21
@@ -104,6 +106,8 @@ app:
     insured-amount-max-ratio: 1.20
     max-start-date-days-ahead: 30
 ```
+
+Los secretos y credenciales salen del `.env` de la raíz (ver `README.md` §4); no tienen valores por defecto en el código ni en `application.yml`. Los tests de integración no los necesitan: la base la provee Testcontainers y el secreto del JWT se define en la configuración de test.
 
 Los parámetros `app.pricing.*` se leen con un `@ConfigurationProperties` (`PricingProperties`). Ningún valor de negocio queda escrito como literal en el código.
 

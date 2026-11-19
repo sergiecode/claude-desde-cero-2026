@@ -1,6 +1,6 @@
 # Frontend
 
-Angular 22 · Angular Material 22 · TypeScript 6.0 · componentes standalone · formularios reactivos.
+Angular 22 · Angular Material 22 · TypeScript 6.0 · componentes standalone · Signal Forms · OnPush.
 
 ---
 
@@ -14,6 +14,8 @@ Angular 22 · Angular Material 22 · TypeScript 6.0 · componentes standalone ·
 | Proxy | `proxy.conf.json`: `/api` → `http://localhost:8080` (configurado en `angular.json` para `ng serve`) |
 | Locale | `es-AR` (registrar `localeEsAr` y proveer `LOCALE_ID` y `DEFAULT_CURRENCY_CODE = 'ARS'`) |
 | Tema | Un tema prediseñado de Angular Material |
+| Detección de cambios | OnPush (por defecto en Angular 22) |
+| HTTP | `HttpClient` con Fetch (por defecto en Angular 22) |
 
 ---
 
@@ -43,6 +45,9 @@ src/app/
 Reglas:
 
 - Componentes **standalone**. Sin `NgModule`.
+- Estado local con **signals** (`signal`, `computed`, `linkedSignal`, `resource` cuando corresponda).
+- **Formularios con Signal Forms** (`@angular/forms/signals`): el modelo se crea con `form()`, las reglas con los validadores de esquema (`required`, `email`, `pattern`, etc.) y los campos se conectan con la directiva `FormField`. No se usan formularios reactivos ni template-driven.
+- **Signal Forms + Angular Material:** antes de construir el primer formulario, verificar en la documentación oficial (MCP de Angular, `search_documentation`) cómo se conectan Signal Forms con `matInput`, `mat-select` y `mat-datepicker`. Si no hay una integración documentada, **detenerse y preguntar**; no inventar adaptadores.
 - Los componentes no usan `HttpClient` directamente: llaman a los servicios de `core/api`.
 - El frontend **no calcula** precios, sumas aseguradas, edades ni vencimientos: los muestra tal como llegan del backend.
 - Los textos visibles están en español. Nombres de archivos, clases, variables y propiedades en inglés.
@@ -100,7 +105,7 @@ Las rutas protegidas se muestran dentro del `ShellComponent` y usan `authGuard`.
 
 ### 5.4. Nueva cotización (`/quotes/new`)
 
-Un formulario reactivo con tres bloques (`mat-card` cada uno). Los bloques 2 y 3 están deshabilitados hasta encontrar un cliente válido.
+Un formulario con Signal Forms, con tres bloques (`mat-card` cada uno). Los bloques 2 y 3 están deshabilitados hasta encontrar un cliente válido.
 
 #### Bloque 1 — Cliente
 
@@ -223,3 +228,7 @@ Con el runner de tests que trae por defecto el CLI de Angular 22. Se ejecutan co
 | `CalculationBreakdownComponent` | Muestra los valores recibidos sin modificarlos |
 
 Los servicios HTTP se simulan; estos tests no llaman al backend.
+
+## 8. Prueba exploratoria
+
+Además de los tests unitarios, un agente (`qa-e2e`) usa la aplicación en un navegador real, como lo haría un productor, y recorre los escenarios de `acceptance.md` §8.1. No escribe tests ni modifica código: devuelve un informe con el resultado de cada escenario y capturas de pantalla.
