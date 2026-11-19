@@ -49,7 +49,8 @@ Un solo repositorio:
 
 ```
 cotizador/
-├── CLAUDE.md
+├── CLAUDE.md         ← instrucciones para Claude Code
+├── .claude/          ← rules, settings, hooks, commands, skills y agents de Claude Code
 ├── .env.example
 ├── .gitignore
 ├── docker-compose.yml
@@ -92,7 +93,8 @@ La estructura interna de cada proyecto está en `backend.md` y `frontend.md`.
 | `DB_PASSWORD` | Contraseña de la base | `cambiar` |
 | `JWT_SECRET` | Clave para firmar los tokens (al menos 32 caracteres) | `cambiar-por-una-clave-de-al-menos-32-caracteres` |
 
-- `.env` está en `.gitignore` y **nunca** se sube al repositorio. `.env.example` sí se sube, sin valores reales.
+- `.gitignore` incluye `.env` y `qa-reports/` (capturas de la prueba exploratoria).
+- `.env` **nunca** se sube al repositorio. `.env.example` sí se sube, sin valores reales.
 - Docker Compose lee `.env` automáticamente. El backend lo importa desde la raíz (`backend.md` §3).
 - Si falta una variable, el backend no arranca (no hay valores por defecto para secretos).
 
