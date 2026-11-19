@@ -307,5 +307,6 @@ Ubicación: `backend/src/main/resources/db/migration/`.
 | Integración | `@SpringBootTest` + MockMvc + Testcontainers (PostgreSQL 17) | Endpoints completos con los datos de las migraciones |
 
 - Todos los tests usan un `Clock` fijo: **2026-11-19T10:00:00-03:00**, salvo que el criterio indique otra fecha.
-- Cada criterio de `acceptance.md` marcado como **backend** tiene al menos un test con su código en el nombre (por ejemplo `AC_PRICE_01_autoInCabaYoungDriver()`).
-- Los tests de integración se ejecutan con `./mvnw verify` y necesitan Docker corriendo.
+- Cada criterio de `acceptance.md` marcado como **B** tiene al menos un test con su código en el nombre del método, con guiones bajos (por ejemplo `AC_PRICE_01_autoInCabaYoungDriver()`).
+- **Nombres de clases:** tests unitarios terminan en `Test` y los corre Surefire (`./mvnw test`). Tests de integración terminan en `IT` y los corre Failsafe (`./mvnw verify`).
+- Los tests de integración necesitan Docker corriendo.

@@ -216,7 +216,7 @@ Colores del `StatusChipComponent`: Calculada y Activa en el color primario; Emit
 
 ## 7. Tests unitarios
 
-Con el runner de tests que trae por defecto el CLI de Angular 22. Se ejecutan con `npm test`.
+Con el runner de tests que trae por defecto el CLI de Angular 22. Se ejecutan con `npx ng test --watch=false`. Cada test que cubre un criterio de `acceptance.md` incluye su código al inicio de la descripción, por ejemplo `it('AC-FE-02 vacía modelo y versión al cambiar la marca', ...)`.
 
 | Qué | Casos mínimos |
 | --- | --- |
