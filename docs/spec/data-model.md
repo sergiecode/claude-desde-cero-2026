@@ -231,7 +231,7 @@ Una cotización guarda **todos los valores usados en el cálculo** (regla Q2). S
 | plan_name | VARCHAR(100) | NOT NULL (copia) |
 | plan_rate | NUMERIC(6,4) | NOT NULL (copia) |
 | insured_amount | NUMERIC(15,2) | NOT NULL |
-| zone_code | VARCHAR(10) | NOT NULL (copia) |
+| zone_code | VARCHAR(10) | NOT NULL (copia). El nombre de la zona no se copia: para mostrarlo se lee de `tariff_zones` por este código |
 | zone_factor | NUMERIC(6,4) | NOT NULL (copia) |
 | usage_factor | NUMERIC(6,4) | NOT NULL (copia) |
 | vehicle_age_years | INTEGER | NOT NULL |
