@@ -28,7 +28,10 @@ export class SpanishDatepickerIntl extends MatDatepickerIntl {
   }
 }
 
-/** Registra los textos en español del datepicker para toda la app. */
+/**
+ * Registra los textos en español del datepicker. Se usa en los `providers` del componente que
+ * tiene el datepicker (no en app.config) para no sumar el datepicker al bundle inicial.
+ */
 export function provideSpanishDatepickerIntl(): Provider {
   return { provide: MatDatepickerIntl, useClass: SpanishDatepickerIntl };
 }

@@ -17,6 +17,7 @@ import { Router } from '@angular/router';
 import { ISSUE_ERROR_CODES, QuoteApi } from '../../core/api/quote-api.service';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
 import { asProblemDetails } from '../../core/errors/error.interceptor';
+import { provideSpanishDatepickerIntl } from '../../shared/datepicker-intl';
 import { toLocalIsoDate } from '../../shared/format';
 
 /** Datos que recibe el diálogo. */
@@ -58,7 +59,7 @@ function isValidDate(value: unknown): value is Date {
     FormField,
     MatButtonModule,
     // Directivas sueltas y no MatDatepickerModule: el módulo provee su propio MatDatepickerIntl
-    // (en inglés), que taparía el de la app (shared/datepicker-intl.ts).
+    // (en inglés), que taparía el de este componente (shared/datepicker-intl.ts).
     MatDatepicker,
     MatDatepickerInput,
     MatDatepickerToggle,
@@ -66,7 +67,9 @@ function isValidDate(value: unknown): value is Date {
     MatFormFieldModule,
     MatInputModule,
   ],
-  providers: [provideNativeDateAdapter()],
+  // Los textos en español del datepicker se proveen acá y no en app.config: así
+  // @angular/material/datepicker queda en el chunk diferido y no en el bundle inicial (frontend.md §3).
+  providers: [provideNativeDateAdapter(), provideSpanishDatepickerIntl()],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 mat-dialog-title>Emitir póliza</h2>

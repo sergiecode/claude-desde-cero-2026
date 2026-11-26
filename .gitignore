@@ -3,6 +3,7 @@
 
 # QA exploratory test reports
 qa-reports/
+.playwright-mcp/
 
 # Claude Code local files
 .claude/settings.local.json

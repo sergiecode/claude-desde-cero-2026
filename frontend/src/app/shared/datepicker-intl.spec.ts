@@ -28,8 +28,10 @@ import { provideSpanishDatepickerIntl, SpanishDatepickerIntl } from './datepicke
 class DatepickerHost {}
 
 describe('SpanishDatepickerIntl', () => {
-  it('la app registra los textos del datepicker en español', () => {
-    expect(appConfig.providers).toContainEqual(provideSpanishDatepickerIntl());
+  // Lo provee IssuePolicyDialogComponent (ver su spec): en app.config sumaría
+  // @angular/material/datepicker al bundle inicial (frontend.md §3).
+  it('app.config no registra el datepicker (queda fuera del bundle inicial)', () => {
+    expect(appConfig.providers).not.toContainEqual(provideSpanishDatepickerIntl());
   });
 
   it('el botón del calendario dice "Abrir calendario"', async () => {
