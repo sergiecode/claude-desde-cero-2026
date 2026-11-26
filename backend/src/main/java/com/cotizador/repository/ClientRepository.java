@@ -14,4 +14,8 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
 	@EntityGraph(attributePaths = { "city", "city.province" })
 	Optional<Client> findByDocumentTypeAndDocumentNumber(DocumentType documentType, String documentNumber);
 
+	/** Loads the client with its city, province and tariff zone, used to quote (rule C7). */
+	@EntityGraph(attributePaths = { "city", "city.province", "city.zone" })
+	Optional<Client> findWithCityById(Long id);
+
 }

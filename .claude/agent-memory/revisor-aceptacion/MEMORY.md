@@ -1,2 +1,2 @@
-- [Project decisions](project_decisions.md) — allowed_usages=17, CHECKs V1, hash BCrypt, nombres VehicleModel; etapas 3-5: type corregido, AC-CLI-06 calc->etapa 9, CRLF, inert, alcance etapa 5 vs 6
+- [Project decisions](project_decisions.md) — allowed_usages=17, CHECKs V1, BCrypt, VehicleModel; etapas 3-9: decisiones aceptadas, CRLF recurrente, pendientes etapa 10
 - [SPEC diffs are user updates](project_spec_diffs_are_user_updates.md) — uncommitted docs/spec changes are source of truth; criteria may be split across stages

@@ -1,4 +1,4 @@
-import { DatePipe, formatNumber } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
@@ -24,11 +24,19 @@ import {
   InsuredValueApi,
 } from '../../core/api/insured-value-api.service';
 import { PlanApi } from '../../core/api/plan-api.service';
-import { asProblemDetails } from '../../core/errors/error.interceptor';
+import { QuoteApi } from '../../core/api/quote-api.service';
+import { ErrorMessageService } from '../../core/errors/error-message.service';
+import {
+  asProblemDetails,
+  UNEXPECTED_ERROR_MESSAGE,
+} from '../../core/errors/error.interceptor';
 import { CatalogItem, VehicleType, VehicleUsageType } from '../../core/models/catalog.model';
 import { Client, DocumentType } from '../../core/models/client.model';
 import { InsuredValue } from '../../core/models/insured-value.model';
 import { InsurancePlan } from '../../core/models/plan.model';
+import { QuoteCalculation, QuoteRequest } from '../../core/models/quote.model';
+import { CalculationBreakdownComponent } from '../../shared/components/calculation-breakdown.component';
+import { formatMoney } from '../../shared/format';
 import {
   DOCUMENT_TYPE_LABELS,
   VEHICLE_TYPE_LABELS,
@@ -70,6 +78,29 @@ interface QuoteFormModel {
   insuredAmount: string;
 }
 
+/**
+ * Campos del formulario que pueden recibir un error de `POST /api/quotes/calculate`
+ * (`errors[].field` de api.md §2 coincide con el nombre del campo de `QuoteRequest`).
+ * Un error de otro campo (por ejemplo `clientId`) se muestra en el snackbar.
+ */
+const SERVER_ERROR_FIELDS = [
+  'vehicleType',
+  'manufacturingYear',
+  'brandId',
+  'modelId',
+  'versionId',
+  'usageType',
+  'patent',
+  'planId',
+  'insuredAmount',
+] as const;
+
+type ServerErrorField = (typeof SERVER_ERROR_FIELDS)[number];
+
+function isServerErrorField(field: string): field is ServerErrorField {
+  return (SERVER_ERROR_FIELDS as readonly string[]).includes(field);
+}
+
 type VehicleSelectField = 'vehicleType' | 'manufacturingYear' | 'brandId' | 'modelId';
 
 /**
@@ -106,6 +137,9 @@ interface ValuationState {
 
 const EMPTY_VALUATION: ValuationState = { range: null, error: '' };
 
+/** Errores de campo devueltos por el backend al cotizar, por nombre de campo. */
+type ServerErrors = Partial<Record<ServerErrorField, string>>;
+
 /** Valor de un recurso de catálogo, o una lista vacía mientras carga, sin parámetros o con error. */
 function optionsOf<T>(r: { hasValue(): boolean; value(): T[] | undefined }): T[] {
   return r.hasValue() ? (r.value() ?? []) : [];
@@ -119,6 +153,7 @@ function optionsOf<T>(r: { hasValue(): boolean; value(): T[] | undefined }): T[]
 @Component({
   selector: 'app-quote-new-page',
   imports: [
+    CalculationBreakdownComponent,
     DatePipe,
     FormField,
     MatButtonModule,
@@ -136,6 +171,8 @@ export class QuoteNewPageComponent {
   private readonly catalogApi = inject(CatalogApi);
   private readonly planApi = inject(PlanApi);
   private readonly insuredValueApi = inject(InsuredValueApi);
+  private readonly quoteApi = inject(QuoteApi);
+  private readonly messages = inject(ErrorMessageService);
   private readonly locale = inject(LOCALE_ID);
 
   protected readonly documentTypes = (Object.keys(DOCUMENT_TYPE_LABELS) as DocumentType[]).map(
@@ -269,6 +306,26 @@ export class QuoteNewPageComponent {
       : '';
   });
 
+  /** Todos los valores del formulario: cambia solo cuando cambia algún valor. */
+  private readonly formKey = computed(() => JSON.stringify(this.model()));
+
+  /**
+   * Resultado de "Cotizar" (frontend.md §5.4). Q1: cualquier cambio en el formulario lo borra,
+   * para que nunca quede visible un precio que no corresponde a los datos actuales.
+   */
+  protected readonly calculation = linkedSignal<string, QuoteCalculation | null>({
+    source: this.formKey,
+    computation: () => null,
+  });
+
+  /** Errores de campo del último cálculo; se borran con cualquier cambio en el formulario. */
+  private readonly serverErrors = linkedSignal<string, ServerErrors>({
+    source: this.formKey,
+    computation: () => ({}),
+  });
+
+  protected readonly calculating = signal(false);
+
   protected readonly quoteForm = form(this.model, (f) => {
     required(f.documentType, { message: REQUIRED_MESSAGE });
     required(f.documentNumber, { message: REQUIRED_MESSAGE });
@@ -338,6 +395,21 @@ export class QuoteNewPageComponent {
         message: `La suma asegurada debe estar entre ${this.money(range.minimumAmount)} y ${this.money(range.maximumAmount)}`,
       };
     });
+
+    // Errores de campo que devolvió el backend al cotizar (api.md §2), hasta que cambie el formulario.
+    const serverError = (field: ServerErrorField) => () => {
+      const message = this.serverErrors()[field];
+      return message ? { kind: 'server', message } : null;
+    };
+    validate(f.vehicleType, serverError('vehicleType'));
+    validate(f.manufacturingYear, serverError('manufacturingYear'));
+    validate(f.brandId, serverError('brandId'));
+    validate(f.modelId, serverError('modelId'));
+    validate(f.versionId, serverError('versionId'));
+    validate(f.usageType, serverError('usageType'));
+    validate(f.patent, serverError('patent'));
+    validate(f.planId, serverError('planId'));
+    validate(f.insuredAmount, serverError('insuredAmount'));
   });
 
   protected readonly canSearch = computed(
@@ -345,6 +417,18 @@ export class QuoteNewPageComponent {
       this.quoteForm.documentType().valid() &&
       this.quoteForm.documentNumber().valid() &&
       !this.searching(),
+  );
+
+  /**
+   * "Cotizar": cliente encontrado, valuación disponible (S6) y formulario válido; deshabilitado
+   * mientras hay una llamada en curso (frontend.md §5.4).
+   */
+  protected readonly canCalculate = computed(
+    () =>
+      this.clientFound() &&
+      this.valuation().range !== null &&
+      this.quoteForm().valid() &&
+      !this.calculating(),
   );
 
   /**
@@ -386,7 +470,91 @@ export class QuoteNewPageComponent {
 
   /** Monto con el formato es-AR del manual: `$ 8.640.000,00`. */
   private money(amount: number): string {
-    return `$ ${formatNumber(amount, this.locale, '1.2-2')}`;
+    return formatMoney(amount, this.locale);
+  }
+
+  /**
+   * Pide el precio al backend (api.md §8.2) y muestra el resultado tal como llega.
+   * Si el formulario cambió durante la llamada, el resultado se descarta (Q1).
+   */
+  protected async calculate(): Promise<void> {
+    const request = this.buildRequest();
+    if (!this.canCalculate() || !request) {
+      return;
+    }
+    const key = this.formKey();
+    this.calculating.set(true);
+    try {
+      const result = await this.quoteApi.calculate(request);
+      if (this.formKey() === key) {
+        this.calculation.set(result);
+      }
+    } catch (error) {
+      this.handleCalculateError(error, key);
+    } finally {
+      this.calculating.set(false);
+    }
+  }
+
+  /** `QuoteRequest` con los datos del formulario, o `null` si falta alguno. */
+  private buildRequest(): QuoteRequest | null {
+    const client = this.client();
+    const m = this.model();
+    if (
+      !client ||
+      m.vehicleType === '' ||
+      m.manufacturingYear === '' ||
+      m.brandId === '' ||
+      m.modelId === '' ||
+      m.versionId === '' ||
+      m.usageType === '' ||
+      m.planId === '' ||
+      m.insuredAmount === ''
+    ) {
+      return null;
+    }
+    return {
+      clientId: client.id,
+      vehicleType: m.vehicleType,
+      manufacturingYear: m.manufacturingYear,
+      brandId: m.brandId,
+      modelId: m.modelId,
+      versionId: m.versionId,
+      usageType: m.usageType,
+      patent: m.patent,
+      planId: m.planId,
+      insuredAmount: Number(m.insuredAmount),
+    };
+  }
+
+  /**
+   * Errores de "Cotizar" (frontend.md §4 y §5.4): los que traen `errors` de campos del formulario
+   * se muestran en esos campos; el resto, en el snackbar. Sin conexión y 401 ya los resolvió
+   * el errorInterceptor.
+   */
+  private handleCalculateError(error: unknown, key: string): void {
+    if (error instanceof HttpErrorResponse && (error.status === 0 || error.status === 401)) {
+      return;
+    }
+    const problem = error instanceof HttpErrorResponse ? asProblemDetails(error.error) : null;
+    const allErrors = problem?.errors ?? [];
+    const fieldErrors = allErrors.filter((e) => isServerErrorField(e.field));
+
+    if (fieldErrors.length && this.formKey() === key) {
+      const errors: ServerErrors = {};
+      for (const { field, message } of fieldErrors) {
+        if (isServerErrorField(field) && !errors[field]) {
+          errors[field] = message;
+        }
+      }
+      this.serverErrors.set(errors);
+      for (const field of Object.keys(errors) as ServerErrorField[]) {
+        this.quoteForm[field]().markAsTouched();
+      }
+    }
+    if (!fieldErrors.length || fieldErrors.length < allErrors.length) {
+      this.messages.show(problem?.detail ?? UNEXPECTED_ERROR_MESSAGE);
+    }
   }
 
   /**

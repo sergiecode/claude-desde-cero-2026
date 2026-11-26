@@ -1,0 +1,13 @@
+.breakdown {
+  width: 100%;
+}
+
+.breakdown__value {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.breakdown__total td {
+  font-weight: 600;
+}

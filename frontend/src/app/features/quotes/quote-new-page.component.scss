@@ -69,3 +69,9 @@
   line-height: 1.2;
   color: var(--mat-sys-on-surface-variant);
 }
+
+.quote-new__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+}

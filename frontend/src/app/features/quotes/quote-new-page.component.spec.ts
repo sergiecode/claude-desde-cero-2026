@@ -14,11 +14,13 @@ import { CatalogApi } from '../../core/api/catalog-api.service';
 import { CLIENT_SEARCH_URL } from '../../core/api/client-api.service';
 import { InsuredValueApi } from '../../core/api/insured-value-api.service';
 import { PlanApi } from '../../core/api/plan-api.service';
+import { QuoteApi } from '../../core/api/quote-api.service';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
 import { errorInterceptor } from '../../core/errors/error.interceptor';
 import { Client } from '../../core/models/client.model';
 import { InsuredValue } from '../../core/models/insured-value.model';
 import { InsurancePlan } from '../../core/models/plan.model';
+import { QuoteCalculation, QuoteRequest } from '../../core/models/quote.model';
 import { QuoteNewPageComponent } from './quote-new-page.component';
 
 const PERSON: Client = {
@@ -113,6 +115,28 @@ function insuredValueStub() {
   return { get: vi.fn(async (_versionId: number, _year: number) => INSURED_VALUE) };
 }
 
+const CALCULATION: QuoteCalculation = {
+  insuredAmount: 10800000.0,
+  planRate: 0.0025,
+  basePremium: 27000.0,
+  zone: { code: 'ZONA_1', name: 'CABA', factor: 1.2 },
+  usageFactor: 1.0,
+  vehicleAgeYears: 8,
+  vehicleAgeFactor: 1.1,
+  driverAge: 22,
+  driverAgeFactor: 1.3,
+  premium: 46332.0,
+  taxRate: 0.21,
+  taxes: 9729.72,
+  totalPrice: 56061.72,
+  currency: 'ARS',
+};
+
+/** QuoteApi simulado; la URL y el body se prueban en quote-api.service.spec.ts. */
+function quoteStub() {
+  return { calculate: vi.fn(async (_request: QuoteRequest) => CALCULATION) };
+}
+
 registerLocaleData(localeEsAr);
 
 type VehicleField =
@@ -132,12 +156,14 @@ describe('QuoteNewPageComponent', () => {
   let catalog: ReturnType<typeof catalogStub>;
   let planApi: ReturnType<typeof planStub>;
   let insuredValueApi: ReturnType<typeof insuredValueStub>;
+  let quoteApi: ReturnType<typeof quoteStub>;
 
   beforeEach(async () => {
     shown = [];
     catalog = catalogStub();
     planApi = planStub();
     insuredValueApi = insuredValueStub();
+    quoteApi = quoteStub();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -147,6 +173,7 @@ describe('QuoteNewPageComponent', () => {
         { provide: CatalogApi, useValue: catalog },
         { provide: PlanApi, useValue: planApi },
         { provide: InsuredValueApi, useValue: insuredValueApi },
+        { provide: QuoteApi, useValue: quoteApi },
         { provide: LOCALE_ID, useValue: 'es-AR' },
       ],
     });
@@ -921,6 +948,222 @@ describe('QuoteNewPageComponent', () => {
       expect(formModel().versionId).toBe('');
       expect(rangeText()).toBeUndefined();
       expect(insuredValueApi.get).toHaveBeenCalledTimes(1);
+    });
+  });
+  describe('Cotizar y resultado', () => {
+    const REQUEST: QuoteRequest = {
+      clientId: 1,
+      vehicleType: 'AUTO',
+      manufacturingYear: 2020,
+      brandId: 2,
+      modelId: 3,
+      versionId: 5,
+      usageType: 'PARTICULAR',
+      patent: 'ABC123',
+      planId: 3,
+      insuredAmount: 10800000,
+    };
+
+    function calculateButton(): HTMLButtonElement {
+      return root.querySelector<HTMLButtonElement>('[data-action="calculate"]')!;
+    }
+
+    function result(): HTMLElement | null {
+      return root.querySelector<HTMLElement>('[data-block="result"]');
+    }
+
+    function fieldError(field: string): string | undefined {
+      return root.querySelector(`[data-field="${field}"] mat-error`)?.textContent?.trim();
+    }
+
+    async function fillForm(): Promise<void> {
+      await findClient();
+      await choose('vehicleType', 'Auto');
+      await choose('manufacturingYear', '2020');
+      await choose('brandId', 'Volkswagen');
+      await choose('modelId', 'Gol');
+      await choose('versionId', 'Base');
+      await choose('usageType', 'Particular');
+      await (await patentInput()).setValue('ABC123');
+      const plan = await loader.getHarness(
+        MatSelectHarness.with({ selector: '[data-field="planId"] mat-select' }),
+      );
+      await plan.open();
+      await plan.clickOptions({ text: /Todo riesgo/ });
+      await vi.waitFor(() =>
+        expect(root.querySelector('.quote-new__range')).not.toBeNull(),
+      );
+      await fixture.whenStable();
+    }
+
+    async function calculate(): Promise<void> {
+      calculateButton().click();
+      await vi.waitFor(() => expect(quoteApi.calculate).toHaveBeenCalled());
+      await fixture.whenStable();
+    }
+
+    function rejectWith(status: number, code: string, detail: string, errors: object[] = []) {
+      quoteApi.calculate.mockRejectedValueOnce(
+        new HttpErrorResponse({
+          status,
+          statusText: 'Error',
+          error: { type: 'about:blank', title: 'Error', status, detail, code, errors },
+        }),
+      );
+    }
+
+    it('Cotizar está deshabilitado sin cliente y con el formulario incompleto', async () => {
+      expect(calculateButton().textContent?.trim()).toBe('Cotizar');
+      expect(calculateButton().disabled).toBe(true);
+
+      await findClient();
+      expect(calculateButton().disabled).toBe(true);
+
+      await choose('vehicleType', 'Auto');
+      expect(calculateButton().disabled).toBe(true);
+    });
+
+    it('Cotizar se habilita con cliente encontrado, valuación disponible y formulario válido', async () => {
+      await fillForm();
+      expect(calculateButton().disabled).toBe(false);
+      expect(result()).toBeNull();
+    });
+
+    it('al cotizar envía el QuoteRequest y muestra el desglose tal como lo devuelve el backend', async () => {
+      await fillForm();
+      await calculate();
+      await vi.waitFor(() => expect(result()).not.toBeNull());
+
+      expect(quoteApi.calculate).toHaveBeenCalledExactlyOnceWith(REQUEST);
+      const text = result()!.textContent!;
+      expect(text).toContain('Prima mensual');
+      expect(text).toContain('$ 46.332,00');
+      expect(text).toContain('Impuestos (21 %)');
+      expect(text).toContain('$ 56.061,72');
+      expect(text).toContain('Factor geográfico (CABA)');
+      expect(shown).toEqual([]);
+    });
+
+    it('Cotizar se deshabilita mientras la llamada está en curso', async () => {
+      let resolve!: (value: QuoteCalculation) => void;
+      quoteApi.calculate.mockImplementationOnce(
+        () => new Promise<QuoteCalculation>((r) => (resolve = r)),
+      );
+      await fillForm();
+      calculateButton().click();
+      fixture.detectChanges();
+
+      expect(calculateButton().disabled).toBe(true);
+      calculateButton().click();
+      expect(quoteApi.calculate).toHaveBeenCalledTimes(1);
+
+      resolve(CALCULATION);
+      await vi.waitFor(() => expect(result()).not.toBeNull());
+      await fixture.whenStable();
+      expect(calculateButton().disabled).toBe(false);
+    });
+
+    it('Q1 cambiar la patente después de cotizar borra el resultado', async () => {
+      await fillForm();
+      await calculate();
+      await vi.waitFor(() => expect(result()).not.toBeNull());
+
+      await (await patentInput()).setValue('ABC124');
+      await fixture.whenStable();
+
+      expect(result()).toBeNull();
+      expect(calculateButton().disabled).toBe(false);
+    });
+
+    it('Q1 cambiar el plan o la suma asegurada después de cotizar borra el resultado', async () => {
+      await fillForm();
+      await calculate();
+      await vi.waitFor(() => expect(result()).not.toBeNull());
+
+      const plan = await loader.getHarness(
+        MatSelectHarness.with({ selector: '[data-field="planId"] mat-select' }),
+      );
+      await plan.open();
+      await plan.clickOptions({ text: /Terceros completo/ });
+      await fixture.whenStable();
+      expect(result()).toBeNull();
+
+      await calculate();
+      await vi.waitFor(() => expect(result()).not.toBeNull());
+      const insured = await loader.getHarness(
+        MatInputHarness.with({ selector: '[data-field="insuredAmount"] input' }),
+      );
+      await insured.setValue('10000000');
+      await fixture.whenStable();
+      expect(result()).toBeNull();
+    });
+
+    it('Q1 si el formulario cambia durante la llamada, el resultado se descarta', async () => {
+      let resolve!: (value: QuoteCalculation) => void;
+      quoteApi.calculate.mockImplementationOnce(
+        () => new Promise<QuoteCalculation>((r) => (resolve = r)),
+      );
+      await fillForm();
+      calculateButton().click();
+      await (await patentInput()).setValue('ABC124');
+      resolve(CALCULATION);
+      await fixture.whenStable();
+
+      expect(result()).toBeNull();
+    });
+
+    it('error con errors por campo: se muestra en el campo, sin snackbar, hasta que cambia el formulario', async () => {
+      rejectWith(400, 'INVALID_PATENT', 'La patente debe tener el formato ABC123', [
+        { field: 'patent', message: 'La patente debe tener el formato ABC123' },
+      ]);
+      await fillForm();
+      await calculate();
+      await vi.waitFor(() =>
+        expect(fieldError('patent')).toBe('La patente debe tener el formato ABC123'),
+      );
+
+      expect(shown).toEqual([]);
+      expect(result()).toBeNull();
+      expect(calculateButton().disabled).toBe(true);
+
+      await (await patentInput()).setValue('ABD123');
+      await fixture.whenStable();
+      expect(fieldError('patent')).toBeUndefined();
+      expect(calculateButton().disabled).toBe(false);
+    });
+
+    it('S5 INSURED_AMOUNT_OUT_OF_RANGE con errors: se muestra en la suma asegurada', async () => {
+      const message = 'La suma asegurada debe estar entre $ 8.640.000,00 y $ 12.960.000,00';
+      rejectWith(400, 'INSURED_AMOUNT_OUT_OF_RANGE', message, [
+        { field: 'insuredAmount', message },
+      ]);
+      await fillForm();
+      await calculate();
+      await vi.waitFor(() => expect(fieldError('insuredAmount')).toBe(message));
+      expect(shown).toEqual([]);
+    });
+
+    it.each([
+      [400, 'USAGE_NOT_ALLOWED', 'El tipo de uso no está permitido para este vehículo'],
+      [404, 'VALUATION_NOT_FOUND', 'No hay valuación disponible para este vehículo'],
+      [404, 'CLIENT_NOT_FOUND', 'Cliente no encontrado'],
+    ])('error %s %s sin errors por campo: muestra el detail en el snackbar', async (status, code, detail) => {
+      rejectWith(status, code, detail);
+      await fillForm();
+      await calculate();
+      await vi.waitFor(() => expect(shown).toEqual([detail]));
+
+      expect(result()).toBeNull();
+      expect(calculateButton().disabled).toBe(false);
+    });
+
+    it('error de un campo que no está en el formulario (clientId): va al snackbar', async () => {
+      rejectWith(400, 'VALIDATION_ERROR', 'Revisá los datos ingresados', [
+        { field: 'clientId', message: 'Completá este campo' },
+      ]);
+      await fillForm();
+      await calculate();
+      await vi.waitFor(() => expect(shown).toEqual(['Revisá los datos ingresados']));
     });
   });
 });

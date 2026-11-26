@@ -11,7 +11,7 @@ import { HANDLED_ERROR_CODES } from './handled-error-codes';
 
 export const CONNECTION_ERROR_MESSAGE = 'No se pudo conectar con el servidor';
 const SESSION_EXPIRED_MESSAGE = 'La sesión expiró. Ingresá nuevamente';
-const UNEXPECTED_ERROR_MESSAGE = 'Ocurrió un error inesperado. Intentá nuevamente';
+export const UNEXPECTED_ERROR_MESSAGE = 'Ocurrió un error inesperado. Intentá nuevamente';
 
 /**
  * Manejo global de errores HTTP (frontend.md §4):

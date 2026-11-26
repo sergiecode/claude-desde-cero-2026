@@ -1,0 +1,9 @@
+<table mat-table [dataSource]="rows()" class="breakdown">
+  <ng-container matColumnDef="concept">
+    <td mat-cell *matCellDef="let r" class="breakdown__concept">{{ r.concept }}</td>
+  </ng-container>
+  <ng-container matColumnDef="value">
+    <td mat-cell *matCellDef="let r" class="breakdown__value">{{ r.value }}</td>
+  </ng-container>
+  <tr mat-row *matRowDef="let r; columns: columns" [class.breakdown__total]="r.total"></tr>
+</table>
