@@ -2,7 +2,7 @@
 name: test-runner
 description: Corre tests del backend o del frontend y devuelve solo un resumen con los fallos. Usar cada vez que haya que ejecutar tests, para no llenar la conversación con la salida de Maven o npm.
 tools: Bash, Read, Grep, Glob
-model: haiku
+model: sonnet
 color: yellow
 ---
 
