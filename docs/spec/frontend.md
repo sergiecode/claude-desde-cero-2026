@@ -47,10 +47,67 @@ Reglas:
 - Componentes **standalone**. Sin `NgModule`.
 - Estado local con **signals** (`signal`, `computed`, `linkedSignal`, `resource` cuando corresponda).
 - **Formularios con Signal Forms** (`@angular/forms/signals`): el modelo se crea con `form()`, las reglas con los validadores de esquema (`required`, `email`, `pattern`, etc.) y los campos se conectan con la directiva `FormField`. No se usan formularios reactivos ni template-driven.
-- **Signal Forms + Angular Material:** antes de construir el primer formulario, verificar en la documentación oficial (MCP de Angular, `search_documentation`) cómo se conectan Signal Forms con `matInput`, `mat-select` y `mat-datepicker`. Si no hay una integración documentada, **detenerse y preguntar**; no inventar adaptadores.
+- **Signal Forms + Angular Material:** se integran directamente; cómo usarlos está en §2.1.
 - Los componentes no usan `HttpClient` directamente: llaman a los servicios de `core/api`.
 - El frontend **no calcula** precios, sumas aseguradas, edades ni vencimientos: los muestra tal como llegan del backend.
 - Los textos visibles están en español. Nombres de archivos, clases, variables y propiedades en inglés.
+
+---
+
+## 2.1. Signal Forms con Angular Material
+
+En Angular 22, Signal Forms es estable y Angular Material lo soporta directamente: la directiva `FormField` se aplica sobre `matInput` y `mat-select` **sin adaptadores ni librerías extra**. No hace falta preguntar ni verificar si la integración existe: se usa.
+
+**Reglas:**
+
+- Enlazar cada control con **`[formField]`** (no `[field]`, que es la forma vieja).
+- El modelo es un `signal` y el formulario se arma con `form(modelo, schema)`.
+- **Validaciones y `disabled` van en el schema** (`required()`, `email()`, `pattern()`, `min()`, `max()`, `disabled()`…), nunca como atributos del template.
+- **Sin `null`** en el modelo: inicializar con `''` u otro valor vacío.
+- `mat-error`: se muestra cuando el control es inválido y fue tocado, o cuando se envía el formulario. Si un campo puede tener varios errores, el template decide cuál mostrar (`@if`, `@for` sobre `errors()`).
+- El botón de enviar se deshabilita con `form().invalid()`.
+- **Fecha de inicio (`mat-datepicker`):** `[formField]` sobre `<input matInput [matDatepicker]>`; en Angular 22, los controles basados en `ControlValueAccessor` funcionan con Signal Forms. Si en los tests no funciona, usar `<input matInput type="date" [formField]>` y seguir, sin preguntar.
+
+Ejemplo de referencia (input, select y errores):
+
+```ts
+import { Component, signal } from '@angular/core';
+import { form, FormField, required, email } from '@angular/forms/signals';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+
+@Component({
+  imports: [FormField, MatFormFieldModule, MatInputModule, MatSelectModule],
+  template: `
+    <mat-form-field>
+      <mat-label>Email</mat-label>
+      <input matInput type="email" [formField]="loginForm.email" />
+      @if (loginForm.email().errors().length) {
+        <mat-error>{{ loginForm.email().errors()[0].message }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>Tipo de documento</mat-label>
+      <mat-select [formField]="loginForm.documentType">
+        <mat-option value="DNI">DNI</mat-option>
+        <mat-option value="CUIT">CUIT</mat-option>
+      </mat-select>
+    </mat-form-field>
+  `,
+})
+export class Example {
+  readonly model = signal({ email: '', documentType: '' });
+  readonly loginForm = form(this.model, (f) => {
+    required(f.email, { message: 'Completá este campo' });
+    email(f.email, { message: 'Email inválido' });
+    required(f.documentType, { message: 'Completá este campo' });
+  });
+}
+```
+
+Referencias: [Angular Material – Input](https://material.angular.dev/components/input), [Angular Material – Select](https://material.angular.dev/components/select), [Angular Material – Form field](https://material.angular.dev/components/form-field), [Signal Forms](https://angular.dev/guide/forms/signals/overview).
 
 ---
 
