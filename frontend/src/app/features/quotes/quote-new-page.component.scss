@@ -1,0 +1,41 @@
+.quote-new {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.quote-new__search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+  padding-top: 16px;
+
+  button {
+    margin-top: 8px;
+  }
+}
+
+.quote-new__number {
+  min-width: 260px;
+}
+
+.quote-new__client {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px 24px;
+  margin: 0;
+
+  dt {
+    font-size: 0.75rem;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.quote-new__block--disabled {
+  opacity: 0.5;
+}
