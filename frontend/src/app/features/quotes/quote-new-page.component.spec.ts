@@ -639,6 +639,50 @@ describe('QuoteNewPageComponent', () => {
       });
     });
 
+    function usageError(): string | undefined {
+      return fixture.nativeElement
+        .querySelector('[data-field="usageType"] mat-error')
+        ?.textContent?.trim();
+    }
+
+    it('AC-FE-02 al cambiar el tipo, el tipo de uso vaciado no muestra error hasta que se toque', async () => {
+      await fillVehicle();
+      await choose('vehicleType', 'Moto');
+
+      const usage = fixture.componentInstance['quoteForm'].usageType();
+      expect(usage.invalid()).toBe(true);
+      expect(usage.touched()).toBe(false);
+      expect(usageError()).toBeUndefined();
+      expect(await (await vehicleSelect('usageType')).isValid()).toBe(true);
+    });
+
+    it('AC-FE-02 el tipo de uso vaciado muestra "Completá este campo" al tocarlo', async () => {
+      await fillVehicle();
+      await choose('vehicleType', 'Moto');
+
+      const select = await vehicleSelect('usageType');
+      await select.open();
+      await select.close();
+      await select.blur();
+      await fixture.whenStable();
+
+      expect(fixture.componentInstance['quoteForm'].usageType().touched()).toBe(true);
+      expect(usageError()).toBe('Completá este campo');
+    });
+
+    it('AC-FE-02 el tipo de uso vaciado muestra "Completá este campo" al enviar el formulario', async () => {
+      await fillVehicle();
+      await choose('vehicleType', 'Moto');
+
+      // "Cotizar" queda deshabilitado con el formulario inválido (frontend.md §5.4); enviar el
+      // formulario marca todos los campos como tocados.
+      expect(fixture.componentInstance['canCalculate']()).toBe(false);
+      fixture.componentInstance['quoteForm']().markAsTouched();
+      await fixture.whenStable();
+
+      expect(usageError()).toBe('Completá este campo');
+    });
+
     it('AC-FE-02 vacía marca, modelo y versión al cambiar el año', async () => {
       await fillVehicle();
       await choose('manufacturingYear', '2025');

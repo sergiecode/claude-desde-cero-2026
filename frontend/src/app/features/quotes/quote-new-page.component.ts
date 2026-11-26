@@ -448,10 +448,16 @@ export class QuoteNewPageComponent {
   /**
    * V4: el productor cambió un select del vehículo; se vacían los que dependen de él.
    * Responde al evento del usuario (no a un `effect`), así que no hay escrituras en cadena.
+   * Los campos vaciados vuelven a "no tocados": su "Completá este campo" no se muestra hasta
+   * que el productor los toque de nuevo (frontend.md §2: `mat-error` solo si fue tocado).
    */
   protected clearDependents(field: VehicleSelectField): void {
-    const cleared = Object.fromEntries(CASCADE_DEPENDENTS[field].map((key) => [key, '']));
+    const dependents = CASCADE_DEPENDENTS[field];
+    const cleared = Object.fromEntries(dependents.map((key) => [key, '']));
     this.model.update((m) => ({ ...m, ...cleared }));
+    for (const key of dependents) {
+      this.quoteForm[key]().reset();
+    }
   }
 
   /**

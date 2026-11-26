@@ -3,7 +3,11 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { form, FormField, maxDate, minDate, required, validate } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { provideNativeDateAdapter } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
+import {
+  MatDatepicker,
+  MatDatepickerInput,
+  MatDatepickerToggle,
+} from '@angular/material/datepicker';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -53,7 +57,11 @@ function isValidDate(value: unknown): value is Date {
   imports: [
     FormField,
     MatButtonModule,
-    MatDatepickerModule,
+    // Directivas sueltas y no MatDatepickerModule: el módulo provee su propio MatDatepickerIntl
+    // (en inglés), que taparía el de la app (shared/datepicker-intl.ts).
+    MatDatepicker,
+    MatDatepickerInput,
+    MatDatepickerToggle,
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,

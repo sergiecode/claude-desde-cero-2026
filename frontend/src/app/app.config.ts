@@ -10,6 +10,7 @@ import {
 import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
+import { provideSpanishDatepickerIntl } from './shared/datepicker-intl';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { errorInterceptor } from './core/errors/error.interceptor';
 
@@ -22,5 +23,6 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withFetch(), withInterceptors([authInterceptor, errorInterceptor])),
     { provide: LOCALE_ID, useValue: 'es-AR' },
     { provide: DEFAULT_CURRENCY_CODE, useValue: 'ARS' },
+    provideSpanishDatepickerIntl(),
   ],
 };

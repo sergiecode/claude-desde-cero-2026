@@ -10,6 +10,7 @@ import { provideRouter, Router } from '@angular/router';
 import { QuoteApi } from '../../core/api/quote-api.service';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
 import { PolicyDetail } from '../../core/models/policy.model';
+import { provideSpanishDatepickerIntl } from '../../shared/datepicker-intl';
 import { toLocalIsoDate } from '../../shared/format';
 import { IssuePolicyDialogComponent } from './issue-policy-dialog.component';
 
@@ -54,6 +55,7 @@ describe('IssuePolicyDialogComponent', () => {
         { provide: MatSnackBar, useValue: snackBar },
         { provide: ErrorMessageService, useValue: { show: (m: string) => shown.push(m) } },
         { provide: LOCALE_ID, useValue: 'es-AR' },
+        provideSpanishDatepickerIntl(),
       ],
     });
     navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true) as never;
@@ -93,6 +95,11 @@ describe('IssuePolicyDialogComponent', () => {
     expect(confirmButton().textContent?.trim()).toBe('Confirmar emisión');
     expect(confirmButton().disabled).toBe(false);
     expect(root.querySelector('[data-action="cancel"]')?.textContent?.trim()).toBe('Cancelar');
+  });
+
+  it('el botón del calendario usa los textos en español de la app ("Abrir calendario")', () => {
+    const toggle = root.querySelector('mat-datepicker-toggle button');
+    expect(toggle?.getAttribute('aria-label')).toBe('Abrir calendario');
   });
 
   it('confirma con hoy: envía startDate en yyyy-MM-dd local', async () => {
