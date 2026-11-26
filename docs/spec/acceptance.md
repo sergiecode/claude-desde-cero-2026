@@ -162,7 +162,7 @@ Las etapas son las de la sección 11 del documento inicial del negocio. `/implem
 | 6 | Reglas condicionales de formularios | AC-FE-02 (vaciado de los selects del vehículo), AC-FE-07, AC-FE-08 |
 | 7 | Coberturas y planes | AC-PLAN-01 |
 | 8 | Suma asegurada y valuaciones | AC-VAL-01 a 03 · AC-VAL-06 · AC-FE-02 (vaciado de la suma asegurada) |
-| 9 | Tarifas y cálculo de precios | AC-PRICE-01 a 05 · AC-VAL-04, 05 · AC-VEH-06 a 11 · AC-FE-06 · AC-CLI-06 (parte de `calculate`) |
-| 10 | Creación y consulta de cotizaciones | AC-QUO-01 a 09 · AC-FE-03, AC-FE-04 |
+| 9 | Tarifas y cálculo de precios | AC-PRICE-01 a 05 · AC-VAL-04, 05 · AC-VEH-06 a 10 · AC-VEH-11 (`calculate` acepta la patente) · AC-FE-06 · AC-CLI-06 (parte de `calculate`) |
+| 10 | Creación y consulta de cotizaciones | AC-QUO-01 a 09 · AC-FE-03, AC-FE-04 · AC-VEH-11 (la patente se guarda como `ABC123`) |
 | 11 | Emisión de pólizas | AC-POL-01 a 14 · AC-FE-05 |
 | Cierre | Prueba exploratoria | AC-E2E-01 a 09 |
