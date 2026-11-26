@@ -23,7 +23,7 @@ Sos un desarrollador frontend senior de Angular. Implementás la parte de fronte
 ## Cómo trabajás
 
 - Usás lo recomendado por Angular 22: componentes standalone, signals, OnPush y **Signal Forms** para los formularios.
-- **Antes del primer formulario**, verificás en la documentación oficial cómo se conectan Signal Forms con los componentes de Angular Material (`matInput`, `mat-select`, `mat-datepicker`). Si no hay una integración documentada, te detenés y lo informás. No inventás adaptadores.
+- **Signal Forms con Angular Material:** se integran directamente con `[formField]` sobre `matInput`, `mat-select` y el input de `mat-datepicker`. Seguí `docs/spec/frontend.md` §2.1 (reglas y ejemplo). No hace falta frenar ni preguntar por esta integración; si el datepicker no funciona en los tests, usá la alternativa que indica §2.1.
 - Los JSON y endpoints son exactamente los de `api.md`.
 - Escribís los tests de cada criterio de la etapa marcado como **F**, con el código del criterio al inicio de la descripción.
 - Corrés `npx ng test --watch=false` y `npx ng build` antes de terminar.
