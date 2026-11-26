@@ -1,4 +1,7 @@
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { registerLocaleData } from '@angular/common';
+import localeEsAr from '@angular/common/locales/es-AR';
+import { HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { LOCALE_ID } from '@angular/core';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HarnessLoader } from '@angular/cdk/testing';
@@ -9,10 +12,12 @@ import { provideRouter } from '@angular/router';
 
 import { CatalogApi } from '../../core/api/catalog-api.service';
 import { CLIENT_SEARCH_URL } from '../../core/api/client-api.service';
+import { InsuredValueApi } from '../../core/api/insured-value-api.service';
 import { PlanApi } from '../../core/api/plan-api.service';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
 import { errorInterceptor } from '../../core/errors/error.interceptor';
 import { Client } from '../../core/models/client.model';
+import { InsuredValue } from '../../core/models/insured-value.model';
 import { InsurancePlan } from '../../core/models/plan.model';
 import { QuoteNewPageComponent } from './quote-new-page.component';
 
@@ -96,6 +101,20 @@ function planStub() {
   return { list: vi.fn(async () => PLANS) };
 }
 
+const INSURED_VALUE: InsuredValue = {
+  minimumAmount: 8640000.0,
+  suggestedAmount: 10800000.0,
+  maximumAmount: 12960000.0,
+  currency: 'ARS',
+};
+
+/** InsuredValueApi simulado; la URL y los query params se prueban en insured-value-api.service.spec.ts. */
+function insuredValueStub() {
+  return { get: vi.fn(async (_versionId: number, _year: number) => INSURED_VALUE) };
+}
+
+registerLocaleData(localeEsAr);
+
 type VehicleField =
   | 'vehicleType'
   | 'manufacturingYear'
@@ -112,11 +131,13 @@ describe('QuoteNewPageComponent', () => {
   let shown: string[];
   let catalog: ReturnType<typeof catalogStub>;
   let planApi: ReturnType<typeof planStub>;
+  let insuredValueApi: ReturnType<typeof insuredValueStub>;
 
   beforeEach(async () => {
     shown = [];
     catalog = catalogStub();
     planApi = planStub();
+    insuredValueApi = insuredValueStub();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -125,6 +146,8 @@ describe('QuoteNewPageComponent', () => {
         { provide: ErrorMessageService, useValue: { show: (m: string) => shown.push(m) } },
         { provide: CatalogApi, useValue: catalog },
         { provide: PlanApi, useValue: planApi },
+        { provide: InsuredValueApi, useValue: insuredValueApi },
+        { provide: LOCALE_ID, useValue: 'es-AR' },
       ],
     });
     fixture = TestBed.createComponent(QuoteNewPageComponent);
@@ -722,6 +745,182 @@ describe('QuoteNewPageComponent', () => {
       await fixture.whenStable();
       expect(component['quoteForm'].planId().valid()).toBe(true);
       expect(planError()).toBeUndefined();
+    });
+  });
+
+  describe('Suma asegurada', () => {
+    const RANGE_MESSAGE = 'La suma asegurada debe estar entre $ 8.640.000,00 y $ 12.960.000,00';
+    const RANGE_TEXT = 'Mínimo $ 8.640.000,00 — Máximo $ 12.960.000,00';
+    const NOT_FOUND = 'No hay valuación disponible para este vehículo';
+
+    function insuredInput(): Promise<MatInputHarness> {
+      return loader.getHarness(
+        MatInputHarness.with({ selector: '[data-field="insuredAmount"] input' }),
+      );
+    }
+
+    function insuredError(): string | undefined {
+      return block('plan')
+        .querySelector('[data-field="insuredAmount"] mat-error')
+        ?.textContent?.trim();
+    }
+
+    function rangeText(): string | undefined {
+      return block('plan').querySelector('.quote-new__range')?.textContent?.trim();
+    }
+
+    function formModel() {
+      return fixture.componentInstance['model']();
+    }
+
+    function insuredField() {
+      return fixture.componentInstance['quoteForm'].insuredAmount();
+    }
+
+    function valuationNotFound(): HttpErrorResponse {
+      return new HttpErrorResponse({
+        status: 404,
+        statusText: 'Not Found',
+        error: problem(404, 'VALUATION_NOT_FOUND', NOT_FOUND),
+      });
+    }
+
+    async function chooseUpToVersion(): Promise<void> {
+      await findClient();
+      await choose('vehicleType', 'Auto');
+      await choose('manufacturingYear', '2020');
+      await choose('brandId', 'Volkswagen');
+      await choose('modelId', 'Gol');
+      await choose('versionId', 'Base');
+    }
+
+    async function fillUpToVersion(): Promise<void> {
+      await chooseUpToVersion();
+      await vi.waitFor(() => expect(rangeText()).toBeDefined());
+      await fixture.whenStable();
+    }
+
+    it('AC-FE-01 sin cliente, el campo está deshabilitado y no se pide la valuación', async () => {
+      expect(await (await insuredInput()).isDisabled()).toBe(true);
+      expect(insuredValueApi.get).not.toHaveBeenCalled();
+      expect(rangeText()).toBeUndefined();
+    });
+
+    it('S2 al elegir la versión pide la valuación, carga el sugerido y muestra el rango en formato es-AR', async () => {
+      await fillUpToVersion();
+
+      expect(insuredValueApi.get).toHaveBeenCalledExactlyOnceWith(5, 2020);
+      expect(await (await insuredInput()).getValue()).toBe('10800000');
+      expect(formModel().insuredAmount).toBe('10800000');
+      expect(rangeText()).toBe(RANGE_TEXT);
+      expect(insuredField().valid()).toBe(true);
+      expect(insuredError()).toBeUndefined();
+    });
+
+    it('V4 cambiar la versión vuelve a pedir la valuación', async () => {
+      await fillUpToVersion();
+      await choose('versionId', 'Full');
+      await vi.waitFor(() => expect(insuredValueApi.get).toHaveBeenCalledTimes(2));
+      await vi.waitFor(() => expect(formModel().insuredAmount).toBe('10800000'));
+
+      expect(insuredValueApi.get).toHaveBeenLastCalledWith(6, 2020);
+    });
+
+    it.each([
+      ['8639000', RANGE_MESSAGE],
+      ['12960001', RANGE_MESSAGE],
+      ['', 'Completá este campo'],
+    ])('S5 suma asegurada "%s": muestra "%s"', async (value, message) => {
+      await fillUpToVersion();
+      const input = await insuredInput();
+      await input.setValue(value);
+      await input.blur();
+      await fixture.whenStable();
+
+      expect(insuredField().invalid()).toBe(true);
+      expect(insuredError()).toBe(message);
+      // El rango sigue visible debajo del campo.
+      expect(rangeText()).toBe(RANGE_TEXT);
+    });
+
+    it.each(['8640000', '12960000', '9500000.5'])(
+      'S5 suma asegurada "%s" dentro del rango (límites incluidos) es válida',
+      async (value) => {
+        await fillUpToVersion();
+        const input = await insuredInput();
+        await input.setValue(value);
+        await input.blur();
+        await fixture.whenStable();
+
+        expect(insuredField().valid()).toBe(true);
+        expect(insuredError()).toBeUndefined();
+      },
+    );
+
+    it('S6 VALUATION_NOT_FOUND: muestra el mensaje en el campo y no permite cotizar', async () => {
+      insuredValueApi.get.mockRejectedValueOnce(valuationNotFound());
+      await chooseUpToVersion();
+      await vi.waitFor(() => expect(insuredError()).toBeDefined());
+      await fixture.whenStable();
+
+      expect(insuredError()).toBe(NOT_FOUND);
+      expect(rangeText()).toBeUndefined();
+      expect(formModel().insuredAmount).toBe('');
+      expect(insuredField().invalid()).toBe(true);
+      expect(fixture.componentInstance['quoteForm']().invalid()).toBe(true);
+      expect(shown).toEqual([]);
+
+      // Aunque el productor escriba un monto, sigue sin poder cotizar.
+      const input = await insuredInput();
+      await input.setValue('10000000');
+      await fixture.whenStable();
+      expect(insuredField().invalid()).toBe(true);
+      expect(insuredError()).toBe(NOT_FOUND);
+    });
+
+    it('S6 elegir otra versión con valuación borra el error de VALUATION_NOT_FOUND', async () => {
+      insuredValueApi.get.mockRejectedValueOnce(valuationNotFound());
+      await chooseUpToVersion();
+      await vi.waitFor(() => expect(insuredError()).toBe(NOT_FOUND));
+
+      await choose('versionId', 'Full');
+      await vi.waitFor(() => expect(rangeText()).toBe(RANGE_TEXT));
+      await fixture.whenStable();
+
+      expect(insuredError()).toBeUndefined();
+      expect(formModel().insuredAmount).toBe('10800000');
+    });
+
+    it('AC-FE-02 vacía modelo, versión y suma asegurada al cambiar la marca', async () => {
+      await fillUpToVersion();
+      await choose('brandId', 'Fiat');
+
+      expect(await (await vehicleSelect('modelId')).getValueText()).toBe('');
+      expect(await (await vehicleSelect('versionId')).getValueText()).toBe('');
+      expect(await (await insuredInput()).getValue()).toBe('');
+      expect(rangeText()).toBeUndefined();
+      expect(formModel()).toMatchObject({
+        brandId: 3,
+        modelId: '',
+        versionId: '',
+        insuredAmount: '',
+      });
+      expect(insuredValueApi.get).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['vehicleType', 'Moto'],
+      ['manufacturingYear', '2025'],
+      ['modelId', 'Polo'],
+    ] as const)('AC-FE-02 cambiar %s vacía la suma asegurada y el rango', async (field, text) => {
+      await fillUpToVersion();
+      await choose(field, text);
+
+      expect(await (await insuredInput()).getValue()).toBe('');
+      expect(formModel().insuredAmount).toBe('');
+      expect(formModel().versionId).toBe('');
+      expect(rangeText()).toBeUndefined();
+      expect(insuredValueApi.get).toHaveBeenCalledTimes(1);
     });
   });
 });

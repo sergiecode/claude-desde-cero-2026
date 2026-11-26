@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, formatNumber } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
@@ -6,6 +6,7 @@ import {
   computed,
   inject,
   linkedSignal,
+  LOCALE_ID,
   resource,
   signal,
 } from '@angular/core';
@@ -18,10 +19,15 @@ import { MatSelectModule } from '@angular/material/select';
 
 import { CatalogApi } from '../../core/api/catalog-api.service';
 import { CLIENT_SEARCH_ERROR_CODES, ClientApi } from '../../core/api/client-api.service';
+import {
+  INSURED_VALUE_ERROR_CODES,
+  InsuredValueApi,
+} from '../../core/api/insured-value-api.service';
 import { PlanApi } from '../../core/api/plan-api.service';
 import { asProblemDetails } from '../../core/errors/error.interceptor';
 import { CatalogItem, VehicleType, VehicleUsageType } from '../../core/models/catalog.model';
 import { Client, DocumentType } from '../../core/models/client.model';
+import { InsuredValue } from '../../core/models/insured-value.model';
 import { InsurancePlan } from '../../core/models/plan.model';
 import {
   DOCUMENT_TYPE_LABELS,
@@ -57,6 +63,11 @@ interface QuoteFormModel {
   usageType: VehicleUsageType | '';
   patent: string;
   planId: number | '';
+  /**
+   * Suma asegurada tal como está en el `<input type="number">`. Se modela como texto para que
+   * el vacío sea `''` (con un modelo numérico, Signal Forms escribe `null` al borrar el campo).
+   */
+  insuredAmount: string;
 }
 
 type VehicleSelectField = 'vehicleType' | 'manufacturingYear' | 'brandId' | 'modelId';
@@ -66,10 +77,10 @@ type VehicleSelectField = 'vehicleType' | 'manufacturingYear' | 'brandId' | 'mod
  * La patente no depende del tipo de vehículo y no se vacía.
  */
 const CASCADE_DEPENDENTS: Record<VehicleSelectField, readonly (keyof QuoteFormModel)[]> = {
-  vehicleType: ['manufacturingYear', 'brandId', 'modelId', 'versionId', 'usageType'],
-  manufacturingYear: ['brandId', 'modelId', 'versionId'],
-  brandId: ['modelId', 'versionId'],
-  modelId: ['versionId'],
+  vehicleType: ['manufacturingYear', 'brandId', 'modelId', 'versionId', 'usageType', 'insuredAmount'],
+  manufacturingYear: ['brandId', 'modelId', 'versionId', 'insuredAmount'],
+  brandId: ['modelId', 'versionId', 'insuredAmount'],
+  modelId: ['versionId', 'insuredAmount'],
 };
 
 interface Option<T> {
@@ -86,6 +97,15 @@ interface ClientSearchState {
 
 const EMPTY_SEARCH: ClientSearchState = { client: null, error: '' };
 
+/** Rango de la suma asegurada devuelto por el backend para el año y la versión elegidos. */
+interface ValuationState {
+  range: InsuredValue | null;
+  /** `detail` de VALUATION_NOT_FOUND (S6). */
+  error: string;
+}
+
+const EMPTY_VALUATION: ValuationState = { range: null, error: '' };
+
 /** Valor de un recurso de catálogo, o una lista vacía mientras carga, sin parámetros o con error. */
 function optionsOf<T>(r: { hasValue(): boolean; value(): T[] | undefined }): T[] {
   return r.hasValue() ? (r.value() ?? []) : [];
@@ -93,8 +113,8 @@ function optionsOf<T>(r: { hasValue(): boolean; value(): T[] | undefined }): T[]
 
 /**
  * Nueva cotización (frontend.md §5.4). Bloque 1 (Cliente), bloque 2 (Vehículo, cascada de
- * catálogos) y bloque 3 (Plan; la suma asegurada se agrega en la etapa siguiente). Los bloques
- * 2 y 3 quedan deshabilitados sin cliente (C1).
+ * catálogos) y bloque 3 (Plan y suma asegurada). Los bloques 2 y 3 quedan deshabilitados sin
+ * cliente (C1).
  */
 @Component({
   selector: 'app-quote-new-page',
@@ -115,6 +135,8 @@ export class QuoteNewPageComponent {
   private readonly clientApi = inject(ClientApi);
   private readonly catalogApi = inject(CatalogApi);
   private readonly planApi = inject(PlanApi);
+  private readonly insuredValueApi = inject(InsuredValueApi);
+  private readonly locale = inject(LOCALE_ID);
 
   protected readonly documentTypes = (Object.keys(DOCUMENT_TYPE_LABELS) as DocumentType[]).map(
     (value) => ({ value, label: DOCUMENT_TYPE_LABELS[value] }),
@@ -131,6 +153,7 @@ export class QuoteNewPageComponent {
     usageType: '',
     patent: '',
     planId: '',
+    insuredAmount: '',
   });
 
   /** Documento ingresado; cuando cambia, se descarta el resultado de la búsqueda anterior. */
@@ -224,6 +247,28 @@ export class QuoteNewPageComponent {
     return this.plans().find((plan) => plan.id === planId);
   });
 
+  /** Año y versión elegidos: la valuación depende de los dos (S2). */
+  private readonly valuationKey = computed(
+    () => `${this.model().manufacturingYear}|${this.model().versionId}`,
+  );
+
+  /**
+   * V4: se reinicia (sin rango y sin error) cada vez que cambian el año o la versión, incluso
+   * cuando los vacía la cascada al cambiar el tipo, el año, la marca o el modelo.
+   */
+  private readonly valuation = linkedSignal<string, ValuationState>({
+    source: this.valuationKey,
+    computation: () => EMPTY_VALUATION,
+  });
+
+  /** "Mínimo $ X — Máximo $ Y" con los montos del backend, sin calcular nada (S3). */
+  protected readonly rangeText = computed(() => {
+    const range = this.valuation().range;
+    return range
+      ? `Mínimo ${this.money(range.minimumAmount)} — Máximo ${this.money(range.maximumAmount)}`
+      : '';
+  });
+
   protected readonly quoteForm = form(this.model, (f) => {
     required(f.documentType, { message: REQUIRED_MESSAGE });
     required(f.documentNumber, { message: REQUIRED_MESSAGE });
@@ -263,6 +308,36 @@ export class QuoteNewPageComponent {
     // Bloque 3: un único plan por cotización (P1), deshabilitado sin cliente (C1).
     disabled(f.planId, noClient);
     required(f.planId, { message: REQUIRED_MESSAGE });
+
+    // Suma asegurada: el rango sale del backend (S3, S5); sin valuación no se puede cotizar (S6).
+    disabled(f.insuredAmount, noClient);
+    // Sin valuación (S6) el único mensaje es el `detail` del backend, no "Completá este campo".
+    required(f.insuredAmount, {
+      message: REQUIRED_MESSAGE,
+      when: () => !this.valuation().error,
+    });
+    validate(f.insuredAmount, () => {
+      const error = this.valuation().error;
+      return error ? { kind: 'valuationNotFound', message: error } : null;
+    });
+    validate(f.insuredAmount, ({ value }) => {
+      const { range, error } = this.valuation();
+      if (value() === '' || error) {
+        return null;
+      }
+      if (!range) {
+        // Sin rango del backend (versión sin elegir o valuación en curso) el campo no es válido.
+        return { kind: 'valuationMissing', message: REQUIRED_MESSAGE };
+      }
+      const amount = Number(value());
+      if (amount >= range.minimumAmount && amount <= range.maximumAmount) {
+        return null;
+      }
+      return {
+        kind: 'insuredAmountOutOfRange',
+        message: `La suma asegurada debe estar entre ${this.money(range.minimumAmount)} y ${this.money(range.maximumAmount)}`,
+      };
+    });
   });
 
   protected readonly canSearch = computed(
@@ -279,6 +354,39 @@ export class QuoteNewPageComponent {
   protected clearDependents(field: VehicleSelectField): void {
     const cleared = Object.fromEntries(CASCADE_DEPENDENTS[field].map((key) => [key, '']));
     this.model.update((m) => ({ ...m, ...cleared }));
+  }
+
+  /**
+   * S2/S6: el productor eligió una versión; se vacía la suma asegurada y se pide la valuación.
+   * Si llega, se carga el sugerido; si no hay valuación, el campo queda inválido con el `detail`.
+   */
+  protected async loadInsuredValue(): Promise<void> {
+    this.model.update((m) => ({ ...m, insuredAmount: '' }));
+    const { versionId, manufacturingYear } = this.model();
+    if (versionId === '' || manufacturingYear === '') {
+      return;
+    }
+    const key = this.valuationKey();
+    try {
+      const range = await this.insuredValueApi.get(versionId, manufacturingYear);
+      if (this.valuationKey() === key) {
+        this.valuation.set({ range, error: '' });
+        this.model.update((m) => ({ ...m, insuredAmount: String(range.suggestedAmount) }));
+      }
+    } catch (error) {
+      const problem = error instanceof HttpErrorResponse ? asProblemDetails(error.error) : null;
+      const handled: readonly string[] = INSURED_VALUE_ERROR_CODES;
+      if (problem && handled.includes(problem.code) && this.valuationKey() === key) {
+        this.valuation.set({ range: null, error: problem.detail });
+        this.quoteForm.insuredAmount().markAsTouched();
+      }
+      // El resto de los errores los muestra el errorInterceptor.
+    }
+  }
+
+  /** Monto con el formato es-AR del manual: `$ 8.640.000,00`. */
+  private money(amount: number): string {
+    return `$ ${formatNumber(amount, this.locale, '1.2-2')}`;
   }
 
   /**

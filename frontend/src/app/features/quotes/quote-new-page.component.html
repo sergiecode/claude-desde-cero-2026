@@ -131,7 +131,7 @@
 
         <mat-form-field appearance="outline" data-field="versionId">
           <mat-label>Versión</mat-label>
-          <mat-select [formField]="quoteForm.versionId">
+          <mat-select [formField]="quoteForm.versionId" (selectionChange)="loadInsuredValue()">
             @for (version of versions(); track version.id) {
               <mat-option [value]="version.id">{{ version.name }}</mat-option>
             }
@@ -192,6 +192,20 @@
             <mat-error>{{ quoteForm.planId().errors()[0].message }}</mat-error>
           }
         </mat-form-field>
+
+        <div class="quote-new__insured" data-field="insuredAmount">
+          <mat-form-field appearance="outline">
+            <mat-label>Suma asegurada</mat-label>
+            <span matTextPrefix>$&nbsp;</span>
+            <input matInput type="number" [formField]="quoteForm.insuredAmount" />
+            @if (quoteForm.insuredAmount().errors().length) {
+              <mat-error>{{ quoteForm.insuredAmount().errors()[0].message }}</mat-error>
+            }
+          </mat-form-field>
+          @if (rangeText(); as range) {
+            <p class="quote-new__range">{{ range }}</p>
+          }
+        </div>
       </div>
     </mat-card-content>
   </mat-card>
