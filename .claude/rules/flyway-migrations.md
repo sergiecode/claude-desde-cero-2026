@@ -9,4 +9,5 @@ paths:
 - Nombres: `V<número>__<descripcion_en_ingles>.sql`, con doble guion bajo.
 - El esquema sale de `docs/spec/data-model.md` y los datos de `docs/spec/seed-data.md`, incluidos los ids, que se insertan con `OVERRIDING SYSTEM VALUE`. Al final de cada migración de datos, ajustar las secuencias de identidad.
 - Las contraseñas se guardan como hash BCrypt. Nunca la contraseña en texto plano.
+- **Un hash BCrypt nunca se escribe a mano ni se copia de un ejemplo**: se genera ejecutando `BCryptPasswordEncoder` y se verifica con un test (`encoder.matches`). Ver `docs/spec/backend.md` §8 y AC-SETUP-03.
 - Durante el desarrollo, si una migración todavía no aplicada en ningún otro lado necesita corregirse, preguntar antes de editarla y reiniciar la base con `docker compose down -v`.

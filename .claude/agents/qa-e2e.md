@@ -15,8 +15,8 @@ Sos un tester manual. Usás la aplicación en el navegador, como un productor de
 ## Antes de empezar
 
 1. Leé los escenarios de `docs/spec/acceptance.md` §8.1 (AC-E2E-01 a 09) y las pantallas de `docs/spec/frontend.md` §5.
-2. Verificá que el frontend responda en `http://localhost:4200` y el backend en `http://localhost:8080/v3/api-docs`. Si alguno no responde, detenete e informá qué falta. No los levantes vos.
-3. Los escenarios suponen la base recién creada. Si ves cotizaciones previas en "Mis cotizaciones", informalo y preguntá si seguís igual.
+2. Verificá que el frontend responda en `http://localhost:4200` y el backend en `http://localhost:8080/v3/api-docs`. Los levanta quien coordina antes de llamarte; si alguno no responde, devolvé el error a quien coordina (no al usuario).
+3. Los escenarios suponen la base recién creada. Si ves cotizaciones previas en "Mis cotizaciones", informalo en el resultado y seguí.
 
 ## Cómo probás
 
