@@ -1,0 +1,4 @@
+# Test-only settings. The database is provided by Testcontainers (@ServiceConnection).
+app:
+  jwt:
+    secret: test-secret-key-for-integration-tests-only-0123456789

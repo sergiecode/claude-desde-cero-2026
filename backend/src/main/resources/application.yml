@@ -1,0 +1,30 @@
+spring:
+  config:
+    import: optional:file:../.env[.properties]   # .env de la raíz del repo
+  datasource:
+    url: jdbc:postgresql://localhost:5432/${DB_NAME}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+app:
+  timezone: America/Argentina/Buenos_Aires
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration: 8h
+  pricing:
+    tax-rate: 0.21
+    company-driver-age-factor: 1.00
+    quote-validity-days: 15
+    min-vehicle-year: 2010
+    min-client-age: 18
+    depreciation-rate-per-year: 0.05
+    depreciation-floor: 0.30
+    insured-amount-min-ratio: 0.80
+    insured-amount-max-ratio: 1.20
+    max-start-date-days-ahead: 30
