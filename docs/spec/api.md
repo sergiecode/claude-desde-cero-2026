@@ -62,6 +62,10 @@ Todos los errores usan **Problem Details (RFC 9457)**, con dos campos extra: `co
 
 Los montos dentro de los mensajes usan formato es-AR: `$ 8.640.000,00`.
 
+**Errores del framework** (ruta inexistente `404`, método no permitido `405`, tipo de contenido no soportado `415`): conservan su status y salen en formato Problem Details, **sin `code`**. No son errores de negocio y el frontend los trata como un error genérico (snackbar con el `detail`).
+
+**JSON mal formado o campos faltantes** en cualquier request, incluido el login: `400 VALIDATION_ERROR`.
+
 ---
 
 ## 3. Autenticación
