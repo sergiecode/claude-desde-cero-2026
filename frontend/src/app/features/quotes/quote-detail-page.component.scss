@@ -20,6 +20,11 @@
   color: var(--mat-sys-on-surface-variant);
 }
 
+.quote-detail__actions {
+  display: flex;
+  gap: 8px;
+}
+
 .quote-detail__sections {
   display: flex;
   flex-direction: column;

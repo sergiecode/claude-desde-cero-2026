@@ -28,3 +28,14 @@ export function formatRate(rate: number, locale: string, digitsInfo = '1.2-2'): 
  * de verano). Se pasa al `DatePipe` para que la hora no dependa de la zona del navegador.
  */
 export const DISPLAY_TIMEZONE = '-0300';
+
+/**
+ * Fecha local como `yyyy-MM-dd`, sin pasar por UTC (`toISOString` podría correr el día).
+ * Es el formato de `startDate` en `POST /api/quotes/{id}/issue` (api.md §8.6).
+ */
+export function toLocalIsoDate(date: Date): string {
+  const year = String(date.getFullYear()).padStart(4, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}

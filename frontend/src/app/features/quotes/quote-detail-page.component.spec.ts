@@ -3,12 +3,14 @@ import localeEsAr from '@angular/common/locales/es-AR';
 import { HttpErrorResponse } from '@angular/common/http';
 import { LOCALE_ID } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 
 import { QuoteApi } from '../../core/api/quote-api.service';
 import { Client } from '../../core/models/client.model';
 import { QuoteDetail } from '../../core/models/quote.model';
+import { IssuePolicyDialogComponent } from './issue-policy-dialog.component';
 import { QuoteDetailPageComponent } from './quote-detail-page.component';
 
 registerLocaleData(localeEsAr);
@@ -85,9 +87,13 @@ describe('QuoteDetailPageComponent', () => {
   let fixture: ComponentFixture<QuoteDetailPageComponent>;
   let root: HTMLElement;
   let get: ReturnType<typeof vi.fn>;
+  let dialog: { open: ReturnType<typeof vi.fn> };
+  let dialogResult: 'issued' | 'reload' | undefined;
 
   async function create(id: string, response: () => Promise<QuoteDetail>): Promise<void> {
     get = vi.fn(response);
+    dialogResult = undefined;
+    dialog = { open: vi.fn(() => ({ afterClosed: () => of(dialogResult) })) };
     const paramMap = convertToParamMap({ id });
     TestBed.configureTestingModule({
       providers: [
@@ -95,6 +101,7 @@ describe('QuoteDetailPageComponent', () => {
         { provide: QuoteApi, useValue: { get } },
         { provide: ActivatedRoute, useValue: { paramMap: of(paramMap), snapshot: { paramMap } } },
         { provide: LOCALE_ID, useValue: 'es-AR' },
+        { provide: MatDialog, useValue: dialog },
       ],
     });
     fixture = TestBed.createComponent(QuoteDetailPageComponent);
@@ -203,5 +210,66 @@ describe('QuoteDetailPageComponent', () => {
 
     expect(root.querySelector('[data-state="not-found"]')).toBeNull();
     expect(root.querySelector('[data-block]')).toBeNull();
+  });
+
+  describe('Emitir póliza', () => {
+    function issueButton(): HTMLButtonElement {
+      return root.querySelector<HTMLButtonElement>('[data-action="issue"]')!;
+    }
+
+    it.each(['EMITTED', 'EXPIRED'] as const)(
+      'AC-FE-05 con estado %s, "Emitir póliza" está deshabilitado',
+      async (status) => {
+        await create('1', async () => ({
+          ...QUOTE,
+          status,
+          policy: status === 'EMITTED' ? { id: 4, policyNumber: 'POL-2026-000004' } : null,
+        }));
+
+        expect(issueButton().textContent?.trim()).toBe('Emitir póliza');
+        expect(issueButton().disabled).toBe(true);
+        issueButton().click();
+        expect(dialog.open).not.toHaveBeenCalled();
+      },
+    );
+
+    it('AC-FE-05 con estado CALCULATED, "Emitir póliza" está habilitado', async () => {
+      await create('1', async () => QUOTE);
+
+      expect(issueButton().disabled).toBe(false);
+    });
+
+    it('"Emitir póliza" abre el diálogo con el id de la cotización', async () => {
+      await create('1', async () => QUOTE);
+
+      issueButton().click();
+
+      expect(dialog.open).toHaveBeenCalledExactlyOnceWith(
+        IssuePolicyDialogComponent,
+        expect.objectContaining({ data: { quoteId: 1 } }),
+      );
+    });
+
+    it('si el diálogo cierra con "reload" (vencida o ya emitida) recarga el detalle', async () => {
+      await create('1', async () => QUOTE);
+      get.mockResolvedValueOnce({ ...QUOTE, status: 'EXPIRED' });
+      dialogResult = 'reload';
+
+      issueButton().click();
+      await vi.waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+      await fixture.whenStable();
+
+      expect(text('app-status-chip')).toBe('Vencida');
+      expect(issueButton().disabled).toBe(true);
+    });
+
+    it('si se cancela el diálogo no recarga el detalle', async () => {
+      await create('1', async () => QUOTE);
+
+      issueButton().click();
+      await fixture.whenStable();
+
+      expect(get).toHaveBeenCalledTimes(1);
+    });
   });
 });

@@ -2,7 +2,7 @@ import { Routes } from '@angular/router';
 
 import { authGuard } from './core/auth/auth.guard';
 
-// Rutas de frontend.md §3. Las pantallas de cotización y póliza se agregan en sus etapas.
+// Rutas de frontend.md §3.
 // Todas las pantallas se cargan en diferido con loadComponent.
 export const routes: Routes = [
   {
@@ -39,6 +39,14 @@ export const routes: Routes = [
             (m) => m.QuoteDetailPageComponent,
           ),
         title: 'Detalle de cotización',
+      },
+      {
+        path: 'policies/:id',
+        loadComponent: () =>
+          import('./features/policies/policy-detail-page.component').then(
+            (m) => m.PolicyDetailPageComponent,
+          ),
+        title: 'Detalle de póliza',
       },
       { path: '', pathMatch: 'full', redirectTo: 'quotes' },
     ],

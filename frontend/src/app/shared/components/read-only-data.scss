@@ -1,0 +1,21 @@
+// Grilla de datos en solo lectura (detalle de cotización y de póliza).
+:host {
+  display: block;
+}
+
+.read-only-data {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px 24px;
+  margin: 0;
+  padding-top: 16px;
+
+  dt {
+    font-size: 0.75rem;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  dd {
+    margin: 0;
+  }
+}

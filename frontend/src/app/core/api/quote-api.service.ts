@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { HANDLED_ERROR_CODES } from '../errors/handled-error-codes';
+import { IssueRequest, PolicyDetail } from '../models/policy.model';
 import { QuoteCalculation, QuoteDetail, QuoteRequest, QuoteSummary } from '../models/quote.model';
 
 export const QUOTES_URL = '/api/quotes';
@@ -10,6 +11,13 @@ export const QUOTE_CALCULATE_URL = `${QUOTES_URL}/calculate`;
 
 /** Errores del detalle que maneja la pantalla (frontend.md §5.5). */
 export const QUOTE_DETAIL_ERROR_CODES = ['QUOTE_NOT_FOUND'] as const;
+
+/** Errores de la emisión que maneja el diálogo "Emitir póliza" (frontend.md §5.6). */
+export const ISSUE_ERROR_CODES = [
+  'QUOTE_EXPIRED',
+  'QUOTE_ALREADY_ISSUED',
+  'INVALID_START_DATE',
+] as const;
 
 /** Servicio HTTP de cotizaciones (api.md §8). */
 @Injectable({ providedIn: 'root' })
@@ -55,6 +63,20 @@ export class QuoteApi {
     return firstValueFrom(
       this.http.get<QuoteDetail>(`${QUOTES_URL}/${id}`, {
         context: new HttpContext().set(HANDLED_ERROR_CODES, QUOTE_DETAIL_ERROR_CODES),
+      }),
+    );
+  }
+
+  /**
+   * Emite la póliza de una cotización (api.md §8.6) con la fecha de inicio en `yyyy-MM-dd`.
+   * QUOTE_EXPIRED, QUOTE_ALREADY_ISSUED e INVALID_START_DATE los maneja el diálogo; el resto,
+   * el errorInterceptor.
+   */
+  issue(quoteId: number, startDate: string): Promise<PolicyDetail> {
+    const body: IssueRequest = { startDate };
+    return firstValueFrom(
+      this.http.post<PolicyDetail>(`${QUOTES_URL}/${quoteId}/issue`, body, {
+        context: new HttpContext().set(HANDLED_ERROR_CODES, ISSUE_ERROR_CODES),
       }),
     );
   }

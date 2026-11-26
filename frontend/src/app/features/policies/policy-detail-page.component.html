@@ -1,0 +1,62 @@
+@if (notFound()) {
+  <div class="policy-detail__not-found" data-state="not-found">
+    <h1>Póliza no encontrada</h1>
+    <a matButton="filled" routerLink="/quotes">Volver a Mis cotizaciones</a>
+  </div>
+} @else if (policy(); as p) {
+  <header class="policy-detail__header">
+    <div class="policy-detail__title">
+      <h1 data-field="policyNumber">{{ p.policyNumber }}</h1>
+      <app-status-chip kind="policy" [status]="p.status" />
+    </div>
+    <p class="policy-detail__info">
+      <span data-field="validity">
+        Vigencia: {{ p.startDate | date: 'dd/MM/yyyy' }} al {{ p.endDate | date: 'dd/MM/yyyy' }}
+      </span>
+      <span data-field="quote">
+        Cotización de origen:
+        <a [routerLink]="['/quotes', p.quoteId]">{{ p.quoteNumber }}</a>
+      </span>
+    </p>
+  </header>
+
+  <div class="policy-detail__sections">
+    <mat-card appearance="outlined" data-block="client">
+      <mat-card-header>
+        <mat-card-title>Cliente</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <app-client-data [client]="p.client" />
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined" data-block="vehicle">
+      <mat-card-header>
+        <mat-card-title>Vehículo</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <app-vehicle-data [vehicle]="p.vehicle" />
+      </mat-card-content>
+    </mat-card>
+
+    @if (amounts(); as a) {
+      <mat-card appearance="outlined" data-block="plan">
+        <mat-card-header>
+          <mat-card-title>Plan y precio</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <dl class="policy-detail__data">
+            <div><dt>Plan</dt><dd data-field="planName">{{ p.planName }}</dd></div>
+            <div><dt>Suma asegurada</dt><dd data-field="insuredAmount">{{ a.insuredAmount }}</dd></div>
+            <div><dt>Prima mensual</dt><dd data-field="premium">{{ a.premium }}</dd></div>
+            <div><dt>Impuestos</dt><dd data-field="taxes">{{ a.taxes }}</dd></div>
+            <div>
+              <dt>Total mensual</dt>
+              <dd data-field="totalPrice" class="policy-detail__total">{{ a.totalPrice }}</dd>
+            </div>
+          </dl>
+        </mat-card-content>
+      </mat-card>
+    }
+  </div>
+}

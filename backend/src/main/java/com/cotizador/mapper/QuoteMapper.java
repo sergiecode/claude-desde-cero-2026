@@ -56,14 +56,7 @@ public class QuoteMapper {
 				inBusinessZone(quote.getCreatedAt()),
 				inBusinessZone(quote.getValidUntil()),
 				clientMapper.toResponse(quote.getClient(), quote.getDriverAge()),
-				new QuoteVehicle(
-						quote.getVehicleType(),
-						quote.getManufacturingYear(),
-						quote.getBrandName(),
-						quote.getModelName(),
-						quote.getVersionName(),
-						quote.getPatent(),
-						quote.getUsageType()),
+				toVehicle(quote),
 				quote.getPlanName(),
 				calculationMapper.toResponse(new PriceCalculation(
 						quote.getInsuredAmount(),
@@ -82,6 +75,18 @@ public class QuoteMapper {
 						quote.getTaxes(),
 						quote.getTotalPrice())),
 				policy);
+	}
+
+	/** The vehicle of a quote with the names copied when it was saved (api.md §8.5). Also used by policies. */
+	public QuoteVehicle toVehicle(Quote quote) {
+		return new QuoteVehicle(
+				quote.getVehicleType(),
+				quote.getManufacturingYear(),
+				quote.getBrandName(),
+				quote.getModelName(),
+				quote.getVersionName(),
+				quote.getPatent(),
+				quote.getUsageType());
 	}
 
 	/** "First Last" for a person (DNI), the business name for a company (CUIT). */

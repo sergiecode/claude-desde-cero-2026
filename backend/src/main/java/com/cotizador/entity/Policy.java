@@ -180,4 +180,16 @@ public class Policy {
 		this.issuedAt = issuedAt;
 	}
 
+	/**
+	 * Expiration on read (backend.md §7.2, manual §8.2): an ACTIVE policy becomes EXPIRED when {@code today} is
+	 * after its end date. A policy is still ACTIVE on its end date. Returns true when the status changed.
+	 */
+	public boolean expireIfOverdue(LocalDate today) {
+		if (status == PolicyStatus.ACTIVE && today.isAfter(endDate)) {
+			status = PolicyStatus.EXPIRED;
+			return true;
+		}
+		return false;
+	}
+
 }

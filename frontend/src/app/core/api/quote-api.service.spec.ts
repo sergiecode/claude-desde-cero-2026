@@ -6,6 +6,7 @@ import { provideRouter } from '@angular/router';
 import { ErrorMessageService } from '../errors/error-message.service';
 import { errorInterceptor } from '../errors/error.interceptor';
 import { HANDLED_ERROR_CODES } from '../errors/handled-error-codes';
+import { PolicyDetail } from '../models/policy.model';
 import { QuoteCalculation, QuoteDetail, QuoteRequest, QuoteSummary } from '../models/quote.model';
 import { QUOTE_CALCULATE_URL, QUOTES_URL, QuoteApi } from './quote-api.service';
 
@@ -151,6 +152,55 @@ describe('QuoteApi', () => {
 
       await expect(result).rejects.toBeDefined();
       expect(shown).toEqual(['Error interno']);
+    });
+  });
+
+  describe('emisión de póliza', () => {
+    const POLICY = { id: 4, policyNumber: 'POL-2026-000004' } as PolicyDetail;
+
+    it('issue: POST /api/quotes/{id}/issue con { startDate } y devuelve el PolicyDetail', async () => {
+      const result = api.issue(1, '2026-11-20');
+
+      const req = httpTesting.expectOne('/api/quotes/1/issue');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ startDate: '2026-11-20' });
+      req.flush(POLICY, { status: 201, statusText: 'Created' });
+      await expect(result).resolves.toEqual(POLICY);
+    });
+
+    it.each([
+      [409, 'QUOTE_EXPIRED', 'La cotización está vencida. Generá una nueva'],
+      [409, 'QUOTE_ALREADY_ISSUED', 'Esta cotización ya fue emitida (póliza POL-2026-000001)'],
+      [400, 'INVALID_START_DATE', 'La fecha de inicio debe estar entre hoy y los próximos 30 días'],
+    ])('issue: %s %s lo maneja el diálogo, sin snackbar', async (status, code, detail) => {
+      const result = api.issue(1, '2026-11-20');
+      httpTesting
+        .expectOne('/api/quotes/1/issue')
+        .flush(
+          { type: 'about:blank', title: 'Error', status, detail, code, errors: [] },
+          { status, statusText: 'Error' },
+        );
+
+      await expect(result).rejects.toBeDefined();
+      expect(shown).toEqual([]);
+    });
+
+    it('issue: QUOTE_NOT_FOUND va al snackbar', async () => {
+      const result = api.issue(99, '2026-11-20');
+      httpTesting.expectOne('/api/quotes/99/issue').flush(
+        {
+          type: 'about:blank',
+          title: 'Not Found',
+          status: 404,
+          detail: 'Cotización no encontrada',
+          code: 'QUOTE_NOT_FOUND',
+          errors: [],
+        },
+        { status: 404, statusText: 'Not Found' },
+      );
+
+      await expect(result).rejects.toBeDefined();
+      expect(shown).toEqual(['Cotización no encontrada']);
     });
   });
 });

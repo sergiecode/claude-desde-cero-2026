@@ -19,6 +19,17 @@
         <a [routerLink]="['/policies', policy.id]">{{ policy.policyNumber }}</a>
       </p>
     }
+    <div class="quote-detail__actions">
+      <button
+        matButton="filled"
+        type="button"
+        data-action="issue"
+        [disabled]="q.status !== 'CALCULATED'"
+        (click)="openIssueDialog(q.id)"
+      >
+        Emitir póliza
+      </button>
+    </div>
   </header>
 
   <div class="quote-detail__sections">
@@ -27,21 +38,7 @@
         <mat-card-title>Cliente</mat-card-title>
       </mat-card-header>
       <mat-card-content>
-        <dl class="quote-detail__data">
-          @if (q.client.businessName) {
-            <div><dt>Razón social</dt><dd>{{ q.client.businessName }}</dd></div>
-          } @else {
-            <div><dt>Nombre</dt><dd>{{ q.client.firstName }}</dd></div>
-            <div><dt>Apellido</dt><dd>{{ q.client.lastName }}</dd></div>
-            <div><dt>Fecha de nacimiento</dt><dd>{{ q.client.birthDate | date: 'dd/MM/yyyy' }}</dd></div>
-            <div><dt>Edad</dt><dd>{{ q.client.age }} años</dd></div>
-          }
-          <div><dt>Email</dt><dd>{{ q.client.email }}</dd></div>
-          <div><dt>Teléfono</dt><dd>{{ q.client.phone }}</dd></div>
-          <div><dt>Domicilio</dt><dd>{{ q.client.address }}</dd></div>
-          <div><dt>Localidad</dt><dd>{{ q.client.city }}</dd></div>
-          <div><dt>Provincia</dt><dd>{{ q.client.province }}</dd></div>
-        </dl>
+        <app-client-data [client]="q.client" />
       </mat-card-content>
     </mat-card>
 
@@ -50,15 +47,7 @@
         <mat-card-title>Vehículo</mat-card-title>
       </mat-card-header>
       <mat-card-content>
-        <dl class="quote-detail__data">
-          <div><dt>Tipo de vehículo</dt><dd>{{ vehicleTypeLabels[q.vehicle.vehicleType] }}</dd></div>
-          <div><dt>Año de fabricación</dt><dd>{{ q.vehicle.manufacturingYear }}</dd></div>
-          <div><dt>Marca</dt><dd>{{ q.vehicle.brandName }}</dd></div>
-          <div><dt>Modelo</dt><dd>{{ q.vehicle.modelName }}</dd></div>
-          <div><dt>Versión</dt><dd>{{ q.vehicle.versionName }}</dd></div>
-          <div><dt>Tipo de uso</dt><dd>{{ usageTypeLabels[q.vehicle.usageType] }}</dd></div>
-          <div><dt>Patente</dt><dd>{{ q.vehicle.patent }}</dd></div>
-        </dl>
+        <app-vehicle-data [vehicle]="q.vehicle" />
       </mat-card-content>
     </mat-card>
 

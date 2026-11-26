@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.cotizador.config.PricingProperties;
 import com.cotizador.dto.QuoteCalculation;
 import com.cotizador.dto.QuoteDetail;
+import com.cotizador.dto.QuotePolicy;
 import com.cotizador.dto.QuoteRequest;
 import com.cotizador.dto.QuoteSummary;
 import com.cotizador.entity.AllowedUsageId;
@@ -30,12 +31,14 @@ import com.cotizador.entity.VehicleModel;
 import com.cotizador.entity.VehicleVersion;
 import com.cotizador.exception.BusinessException;
 import com.cotizador.exception.ErrorCode;
+import com.cotizador.mapper.PolicyMapper;
 import com.cotizador.mapper.QuoteCalculationMapper;
 import com.cotizador.mapper.QuoteMapper;
 import com.cotizador.repository.AllowedUsageRepository;
 import com.cotizador.repository.BrandRepository;
 import com.cotizador.repository.ClientRepository;
 import com.cotizador.repository.InsurancePlanRepository;
+import com.cotizador.repository.PolicyRepository;
 import com.cotizador.repository.ProducerRepository;
 import com.cotizador.repository.QuoteRepository;
 import com.cotizador.repository.TariffZoneRepository;
@@ -70,6 +73,8 @@ public class QuoteService {
 	private final TariffZoneRepository tariffZoneRepository;
 	private final NumberSequenceService numberSequenceService;
 	private final QuoteMapper quoteMapper;
+	private final PolicyRepository policyRepository;
+	private final PolicyMapper policyMapper;
 	private final PricingProperties pricingProperties;
 	private final Clock clock;
 
@@ -79,8 +84,8 @@ public class QuoteService {
 			ClientService clientService, ValuationService valuationService, PricingService pricingService,
 			PatentValidator patentValidator, QuoteCalculationMapper calculationMapper, QuoteRepository quoteRepository,
 			ProducerRepository producerRepository, TariffZoneRepository tariffZoneRepository,
-			NumberSequenceService numberSequenceService, QuoteMapper quoteMapper, PricingProperties pricingProperties,
-			Clock clock) {
+			NumberSequenceService numberSequenceService, QuoteMapper quoteMapper, PolicyRepository policyRepository,
+			PolicyMapper policyMapper, PricingProperties pricingProperties, Clock clock) {
 		this.clientRepository = clientRepository;
 		this.brandRepository = brandRepository;
 		this.modelRepository = modelRepository;
@@ -97,6 +102,8 @@ public class QuoteService {
 		this.tariffZoneRepository = tariffZoneRepository;
 		this.numberSequenceService = numberSequenceService;
 		this.quoteMapper = quoteMapper;
+		this.policyRepository = policyRepository;
+		this.policyMapper = policyMapper;
 		this.pricingProperties = pricingProperties;
 		this.clock = clock;
 	}
@@ -184,13 +191,20 @@ public class QuoteService {
 		return toDetail(quote);
 	}
 
-	/** The zone name is not copied in the quote: it is read from {@code tariff_zones} by its code. */
+	/**
+	 * The zone name is not copied in the quote: it is read from {@code tariff_zones} by its code. An issued quote
+	 * carries the id and number of its policy (api.md §8.5).
+	 */
 	private QuoteDetail toDetail(Quote quote) {
 		String zoneName = tariffZoneRepository.findByCode(quote.getZoneCode())
 				.map(TariffZone::getName)
 				.orElseThrow(() -> new IllegalStateException("Unknown tariff zone " + quote.getZoneCode()));
-		// Issuing policies is stage 11; until then no quote has a policy.
-		return quoteMapper.toDetail(quote, zoneName, null);
+		QuotePolicy policy = quote.getStatus() == QuoteStatus.EMITTED
+				? policyRepository.findByQuoteIdAndProducerId(quote.getId(), quote.getProducer().getId())
+						.map(policyMapper::toQuotePolicy)
+						.orElse(null)
+				: null;
+		return quoteMapper.toDetail(quote, zoneName, policy);
 	}
 
 	/**
