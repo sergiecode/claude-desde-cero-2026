@@ -31,18 +31,30 @@ Presentá un plan corto:
 1. Delegá la parte de backend en `backend-dev`. Pasale la etapa, los criterios y las secciones de la SPEC que aplican.
 2. Delegá la parte de frontend en `frontend-dev`, con la misma información. Si el frontend depende de endpoints nuevos, esperá a que el backend esté terminado.
 3. Si una etapa no tiene parte de backend o de frontend, no delegues esa parte.
-4. **Solo en la etapa 1:** creá vos en la raíz del repositorio `docker-compose.yml`, `.env.example` y `.gitignore`, según `docs/spec/README.md` §3 y §4. El `.gitignore` incluye `.env` y `qa-reports/`. No crees ni leas `.env`: pedile al usuario que haga `cp .env.example .env` y complete los valores antes de verificar AC-SETUP-01.
+4. **Solo en la etapa 1, antes que nada:** creá vos en la raíz del repositorio `.gitignore`, `docker-compose.yml` y `.env.example`, según `docs/spec/README.md` §3 y §4. El `.gitignore` incluye `.env`, `qa-reports/`, `.claude/settings.local.json`, `CLAUDE.local.md`, `backend/target/`, `frontend/node_modules/`, `frontend/dist/` y `frontend/.angular/`. Antes de cualquier `git add`, verificá con `git status` que `.env` no aparezca. No leas ni modifiques `.env`. Si no existe, es lo único que se le pide al usuario (`cp .env.example .env` y completar los valores), y se espera su respuesta antes de verificar.
 
-## 4. Verificación
+## 4. Verificación (siempre automática: el usuario no prueba nada a mano)
 
 1. Pedile a `test-runner` que corra los tests de los criterios de la etapa y todos los tests unitarios. Si es una etapa de backend, también `./mvnw verify`.
-2. Si algo falla, devolvé el fallo al agente que corresponde para que lo corrija. Como máximo **2 intentos**; si sigue fallando, detenete y reportá qué falla y por qué.
-3. Pedile a `revisor-aceptacion` que revise la etapa contra la SPEC. Si marca un problema bloqueante, corregilo y volvé a verificar.
+2. **Prueba de arranque real**, en todas las etapas a partir de la 1. La hacés vos con Bash, sin pedirle nada al usuario:
+   1. `docker compose up -d` y esperá a que PostgreSQL acepte conexiones.
+   2. Levantá el backend en segundo plano (`cd backend && ./mvnw spring-boot:run`) y esperá, como máximo 3 minutos, a que `http://localhost:8080/v3/api-docs` responda `200`.
+   3. Si la etapa tiene frontend, corré `npx ng build` y levantá el frontend en segundo plano (`cd frontend && npm start`). Esperá a que `http://localhost:4200` responda `200`.
+   4. Si la etapa agrega endpoints, probá con `curl` al menos un caso exitoso de cada uno contra el backend levantado (con login si hace falta).
+   5. Detené el backend y el frontend que levantaste. La base puede quedar corriendo.
+
+   Si algo no arranca, se trata igual que un test fallido.
+3. Si algo falla, devolvé el fallo al agente que corresponde para que lo corrija. Como máximo **2 intentos**; si sigue fallando, detenete y reportá qué falla y por qué.
+4. Pedile a `revisor-aceptacion` que revise la etapa contra la SPEC. Si marca un problema bloqueante, corregilo y volvé a verificar.
 
 ## 5. Cierre de la etapa
 
 - **Etapa 1 a 11:** hacé el commit con el formato `feat(stage-$0): <nombre de la etapa en inglés>` y, en el cuerpo, la lista de criterios cubiertos. No hagas `git push`.
-- **Cierre:** verificá que la base esté recién creada y que backend y frontend estén corriendo; si no, avisá qué falta. Después delegá en `qa-e2e` la prueba exploratoria (AC-E2E-01 a 09).
+- **Cierre:** preparás vos el entorno, sin pedirle nada al usuario:
+  1. `docker compose down -v && docker compose up -d` (base recién creada).
+  2. Levantá backend y frontend en segundo plano, como en 4.2, y esperá a que respondan.
+  3. Delegá en `qa-e2e` la prueba exploratoria (AC-E2E-01 a 09).
+  4. Al terminar, dejá backend y frontend corriendo y decile al usuario en qué URLs está la app.
 
 ## 6. Informe
 

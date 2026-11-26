@@ -271,7 +271,8 @@ Ubicación: `backend/src/main/resources/db/migration/`.
 | `V4__seed_producers_and_clients.sql` | Productores y clientes |
 
 - Los datos salen de `seed-data.md`, incluidos los ids, que se insertan explícitamente (`OVERRIDING SYSTEM VALUE`). Al final de cada migración se ajustan las secuencias de identidad para que el próximo id sea el siguiente al último insertado.
-- Las contraseñas se guardan como hash BCrypt. El hash de `Demo2026!` se genera con `BCryptPasswordEncoder` y se pega en `V4`. La contraseña en texto plano no va en el SQL.
+- Las contraseñas se guardan como hash BCrypt. La contraseña en texto plano no va en el SQL.
+- **El hash de `Demo2026!` nunca se escribe a mano ni se copia de un ejemplo.** Se genera **ejecutando** `BCryptPasswordEncoder` (por ejemplo, con un test descartable o `jshell` con el jar de Spring Security en el classpath), se pega en `V4` y se verifica con el criterio AC-SETUP-03 (`encoder.matches("Demo2026!", hash)` para cada productor cargado).
 - Una migración aplicada **nunca se modifica**: los cambios van en una migración nueva.
 
 ---
