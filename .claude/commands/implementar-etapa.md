@@ -28,6 +28,8 @@ Presentá un plan corto:
 
 ## 3. Implementación
 
+**Antes de delegar en cualquier agente** (en este paso y en el 4), volvé a la raíz del repositorio, la carpeta que contiene `CLAUDE.md`. Si el directorio de trabajo queda en `backend/` o `frontend/`, la memoria del revisor se guarda en un lugar equivocado.
+
 1. Delegá la parte de backend en `backend-dev`. Pasale la etapa, los criterios y las secciones de la SPEC que aplican.
 2. Delegá la parte de frontend en `frontend-dev`, con la misma información. Si el frontend depende de endpoints nuevos, esperá a que el backend esté terminado.
 3. Si una etapa no tiene parte de backend o de frontend, no delegues esa parte.
