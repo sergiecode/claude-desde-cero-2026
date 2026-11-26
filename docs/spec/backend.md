@@ -2,6 +2,8 @@
 
 Java 21 · Spring Boot 4.1.x · Maven · PostgreSQL 17 · Flyway.
 
+**JDK:** el código apunta a Java 21 (`java.version` = 21 en el `pom.xml`) y compila con cualquier JDK del 21 al 25. Si el JDK instalado es otro dentro de ese rango, se usa sin preguntar.
+
 ---
 
 ## 1. Proyecto

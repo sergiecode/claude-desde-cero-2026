@@ -26,7 +26,7 @@ Esta carpeta describe **cómo se construye** el sistema. **Qué hace** el sistem
 
 | Capa | Tecnología | Versión |
 | --- | --- | --- |
-| Backend | Java | 21 |
+| Backend | Java | 21 como versión del código (`java.version` = 21 en el `pom.xml`). Sirve cualquier JDK instalado del 21 al 25 (Spring Boot 4.1 es compatible hasta Java 25): no es un bloqueante ni hace falta preguntar |
 | Backend | Spring Boot | 4.1.x (última versión estable al 19/11/2026) |
 | Backend | Build | Maven (con Maven Wrapper `./mvnw`) |
 | Base de datos | PostgreSQL | 17 (imagen Docker `postgres:17`) |

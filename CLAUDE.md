@@ -17,7 +17,7 @@ Sistema para que productores de una aseguradora coticen seguros de autos, motos,
 
 ## Stack
 
-- `backend/`: Java 21, Spring Boot 4.1, Maven, PostgreSQL 17, Flyway.
+- `backend/`: Java 21 (versión del código; sirve cualquier JDK instalado del 21 al 25), Spring Boot 4.1, Maven, PostgreSQL 17, Flyway.
 - `frontend/`: Angular 22, Angular Material, Signal Forms.
 - PostgreSQL corre en Docker Compose; backend y frontend corren en local.
 
