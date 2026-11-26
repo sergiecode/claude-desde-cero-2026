@@ -1,0 +1,6 @@
+package com.cotizador.entity;
+
+public enum VehicleUsageType {
+	PARTICULAR, COMERCIAL, TAXI_REMIS, TRANSPORTE_CARGA,
+	TRANSPORTE_PASAJEROS, AGRICOLA, DELIVERY
+}

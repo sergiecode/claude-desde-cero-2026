@@ -72,7 +72,7 @@ Datos ficticios que cargan las migraciones de Flyway (`backend.md` §8). Los ids
 | CAMIONETA | PARTICULAR, COMERCIAL, TRANSPORTE_CARGA, AGRICOLA, DELIVERY |
 | CAMION | PARTICULAR, COMERCIAL, TRANSPORTE_CARGA, TRANSPORTE_PASAJEROS, AGRICOLA |
 
-(Una fila por combinación: 19 filas en total.)
+(Una fila por combinación: 17 filas en total.)
 
 ### 1.7. `vehicle_age_factors`
 
