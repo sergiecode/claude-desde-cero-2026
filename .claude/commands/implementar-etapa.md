@@ -31,8 +31,7 @@ Presentá un plan corto:
 1. Delegá la parte de backend en `backend-dev`. Pasale la etapa, los criterios y las secciones de la SPEC que aplican.
 2. Delegá la parte de frontend en `frontend-dev`, con la misma información. Si el frontend depende de endpoints nuevos, esperá a que el backend esté terminado.
 3. Si una etapa no tiene parte de backend o de frontend, no delegues esa parte.
-4. **Solo en la etapa 1, antes que nada:** creá vos en la raíz del repositorio `.gitignore`, `docker-compose.yml` y `.env.example`, según `docs/spec/README.md` §3 y §4. El `.gitignore` incluye `.env`, `qa-reports/`, `.claude/settings.local.json`, `CLAUDE.local.md`, `backend/target/`, `frontend/node_modules/`, `frontend/dist/` y `frontend/.angular/`. Antes de cualquier `git add`, verificá con `git status` que `.env` no aparezca. No leas ni modifiques `.env`. Si no existe, es lo único que se le pide al usuario (`cp .env.example .env` y completar los valores), y se espera su respuesta antes de verificar.
-
+4. **Solo en la etapa 1, antes que nada:** creá vos en la raíz del repositorio `.gitignore`, `docker-compose.yml` y `.env.example`, según `docs/spec/README.md` §3 y §4. El `.gitignore` incluye `.env`, `qa-reports/`, `.claude/settings.local.json`, `CLAUDE.local.md`, `backend/target/`, `frontend/node_modules/`, `frontend/dist/` y `frontend/.angular/`. Antes de cualquier `git add`, verificá con `git status` que `.env` no aparezca. No leas ni modifiques `.env`. Si no existe, es lo único que se le pide al usuario (`cp .env.example .env` y completar los valores), y se espera su respuesta antes de verificar. 
 ## 4. Verificación (siempre automática: el usuario no prueba nada a mano)
 
 1. Pedile a `test-runner` que corra los tests de los criterios de la etapa y todos los tests unitarios. Si es una etapa de backend, también `./mvnw verify`.
@@ -49,7 +48,7 @@ Presentá un plan corto:
 
 ## 5. Cierre de la etapa
 
-- **Etapa 1 a 11:** hacé el commit con el formato `feat(stage-$0): <nombre de la etapa en inglés>` y, en el cuerpo, la lista de criterios cubiertos. No hagas `git push`.
+- **Etapa 1 a 11:** hacé el commit con el formato `feat(stage-$0): <nombre de la etapa en inglés>` y, en el cuerpo, la lista de criterios cubiertos. Incluí en el commit `.claude/agent-memory/` si cambió (la memoria del revisor se comparte con el equipo). No hagas `git push`.
 - **Cierre:** preparás vos el entorno, sin pedirle nada al usuario:
   1. `docker compose down -v && docker compose up -d` (base recién creada).
   2. Levantá backend y frontend en segundo plano, como en 4.2, y esperá a que respondan.
