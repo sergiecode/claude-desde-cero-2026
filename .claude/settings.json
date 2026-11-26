@@ -27,7 +27,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/compile-backend.sh",
+            "command": "node",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/compile-backend.js"],
             "timeout": 180
           }
         ]
@@ -38,7 +39,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/run-unit-tests.sh",
+            "command": "node",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/run-unit-tests.js"],
             "timeout": 600
           }
         ]
