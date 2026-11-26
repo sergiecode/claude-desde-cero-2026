@@ -159,9 +159,9 @@ Las etapas son las de la sección 11 del documento inicial del negocio. `/implem
 | 3 | Usuarios y autenticación | AC-AUTH-01 a 05 |
 | 4 | Clientes | AC-CLI-01 a 07 (AC-CLI-06 solo en la búsqueda) · AC-FE-01 |
 | 5 | Catálogos de vehículos | AC-VEH-01 a 05 |
-| 6 | Reglas condicionales de formularios | AC-FE-02, AC-FE-07, AC-FE-08 |
+| 6 | Reglas condicionales de formularios | AC-FE-02 (vaciado de los selects del vehículo), AC-FE-07, AC-FE-08 |
 | 7 | Coberturas y planes | AC-PLAN-01 |
-| 8 | Suma asegurada y valuaciones | AC-VAL-01 a 03 · AC-VAL-06 |
+| 8 | Suma asegurada y valuaciones | AC-VAL-01 a 03 · AC-VAL-06 · AC-FE-02 (vaciado de la suma asegurada) |
 | 9 | Tarifas y cálculo de precios | AC-PRICE-01 a 05 · AC-VAL-04, 05 · AC-VEH-06 a 11 · AC-FE-06 · AC-CLI-06 (parte de `calculate`) |
 | 10 | Creación y consulta de cotizaciones | AC-QUO-01 a 09 · AC-FE-03, AC-FE-04 |
 | 11 | Emisión de pólizas | AC-POL-01 a 14 · AC-FE-05 |

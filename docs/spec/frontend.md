@@ -184,7 +184,7 @@ Un formulario con Signal Forms, con tres bloques (`mat-card` cada uno). Los bloq
 
 | Orden | Campo | Control | Carga opciones con | Al cambiar, vacía |
 | --- | --- | --- | --- | --- |
-| 1 | Tipo de vehículo | `mat-select` | `GET /catalogs/vehicle-types` (al iniciar) | Todo lo de abajo, la suma asegurada y el resultado |
+| 1 | Tipo de vehículo | `mat-select` | `GET /catalogs/vehicle-types` (al iniciar) | Año, marca, modelo, versión, tipo de uso, la suma asegurada y el resultado. La patente **no** se vacía |
 | 2 | Año de fabricación | `mat-select` | `GET /catalogs/years` | Marca, modelo, versión, suma asegurada |
 | 3 | Marca | `mat-select` | `GET /catalogs/brands` | Modelo, versión, suma asegurada |
 | 4 | Modelo | `mat-select` | `GET /catalogs/models` | Versión, suma asegurada |
