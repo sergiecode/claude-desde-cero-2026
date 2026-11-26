@@ -11,6 +11,7 @@ Antes de modificar el frontend, leer `docs/spec/frontend.md` y `docs/spec/api.md
 
 - **Angular 22:** componentes standalone, signals para el estado y OnPush.
 - **Formularios con Signal Forms** (`@angular/forms/signals`): `form()`, validadores de esquema y la directiva `FormField`. No usar formularios reactivos ni template-driven.
+- **Signal Forms + Material se integran directamente:** `[formField]` sobre `matInput`, `mat-select` y el input de `mat-datepicker`, sin adaptadores. Validaciones y `disabled` en el schema, sin `null` en el modelo. Detalle y ejemplo en `docs/spec/frontend.md` §2.1.
 - **Angular Material** para todos los componentes visuales.
 - **El frontend no calcula** precios, sumas aseguradas, edades ni vencimientos: muestra lo que devuelve el backend.
 - **HTTP:** los componentes no usan `HttpClient`; llaman a los servicios de `core/api`. Las interfaces de `core/models` son idénticas a los DTOs de `api.md`.
