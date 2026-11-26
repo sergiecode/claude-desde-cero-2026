@@ -15,6 +15,7 @@ Cada criterio tiene un resultado esperado concreto. Una etapa se considera termi
 | --- | --- | --- | --- |
 | AC-SETUP-01 | B/F | Repositorio recién clonado, `.env` creado a partir de `.env.example` | `docker compose up -d` levanta PostgreSQL · el backend arranca y `GET /v3/api-docs` responde `200` · `ng build` del frontend termina sin errores · `npm start` muestra la pantalla de login |
 | AC-SETUP-02 | B | Base vacía y backend arrancando | Flyway aplica V1 a V4 sin errores · `ddl-auto: validate` no falla · hay 7 zonas, 10 ciudades, 3 planes, 12 marcas, 24 modelos, 48 versiones, 2 productores y 6 clientes |
+| AC-SETUP-03 | B | Productores cargados por V4 | Para cada productor, `new BCryptPasswordEncoder().matches("Demo2026!", passwordHash)` es `true` |
 
 ## 1. Precio (manual §7)
 
@@ -154,7 +155,7 @@ Las etapas son las de la sección 11 del documento inicial del negocio. `/implem
 | Etapa | Nombre | Criterios |
 | --- | --- | --- |
 | 1 | Creación del proyecto Java y Angular | AC-SETUP-01 |
-| 2 | Modelado de entidades y base de datos | AC-SETUP-02 |
+| 2 | Modelado de entidades y base de datos | AC-SETUP-02 · AC-SETUP-03 |
 | 3 | Usuarios y autenticación | AC-AUTH-01 a 05 |
 | 4 | Clientes | AC-CLI-01 a 07 · AC-FE-01 |
 | 5 | Catálogos de vehículos | AC-VEH-01 a 05 |
