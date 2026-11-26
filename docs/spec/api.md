@@ -151,6 +151,8 @@ Reglas de filtrado (V4):
 
 Parámetros faltantes o inválidos → `400 VALIDATION_ERROR`.
 
+Un año fuera de rango (por ejemplo 2009) en `brands` o `models` **no es un error**: devuelve una lista vacía. El año se valida (`INVALID_YEAR`) al cotizar.
+
 ---
 
 ## 6. Planes
