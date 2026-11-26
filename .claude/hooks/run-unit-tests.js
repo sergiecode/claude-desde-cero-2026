@@ -31,8 +31,11 @@ function hasChanges(folder) {
 
 function lastLines(result, filter, max) {
   const lines = `${result.stdout || ""}\n${result.stderr || ""}`.split(/\r?\n/);
-  const selected = filter ? lines.filter(filter) : lines.filter((line) => line.trim() !== "");
-  return selected.slice(-max).join("\n");
+  const nonEmpty = lines.filter((line) => line.trim() !== "");
+  const filtered = filter ? nonEmpty.filter(filter) : nonEmpty;
+  // Si el filtro no encuentra nada (por ejemplo, el comando ni siquiera se pudo ejecutar),
+  // se muestran las últimas líneas tal cual, para que el error nunca llegue vacío.
+  return (filtered.length ? filtered : nonEmpty).slice(-max).join("\n");
 }
 
 const input = readInput();
@@ -47,9 +50,11 @@ const report = [];
 
 // Backend: solo si existe el proyecto Maven y hay cambios sin commitear en backend/.
 const backendDir = path.join(projectDir, "backend");
-const hasWrapper = fs.existsSync(path.join(backendDir, isWindows ? "mvnw.cmd" : "mvnw"));
-if (hasWrapper && hasChanges("backend")) {
-  const result = run(isWindows ? "mvnw.cmd" : "./mvnw", ["-q", "test"], backendDir, isWindows);
+const mvnwPath = path.join(backendDir, isWindows ? "mvnw.cmd" : "mvnw");
+if (fs.existsSync(mvnwPath) && hasChanges("backend")) {
+  // En Windows, con shell:true el .cmd no se resuelve por nombre relativo: se pasa la ruta
+  // absoluta, entre comillas por si la carpeta tiene espacios.
+  const result = run(isWindows ? `"${mvnwPath}"` : "./mvnw", ["-q", "test"], backendDir, isWindows);
   if (result.status !== 0) {
     report.push("--- Backend (mvnw test) ---");
     report.push(lastLines(result, (line) => /FAIL|ERROR|Tests run/.test(line), 40));

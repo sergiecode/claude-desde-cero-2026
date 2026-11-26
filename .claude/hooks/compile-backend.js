@@ -33,10 +33,12 @@ const filePath = input.tool_input && input.tool_input.file_path;
 if (!isBackendJava(filePath)) process.exit(0);
 
 // Si el proyecto Maven todavía no existe (etapa 1), no hace nada.
-const wrapper = isWindows ? "mvnw.cmd" : "./mvnw";
-if (!fs.existsSync(path.join(backendDir, isWindows ? "mvnw.cmd" : "mvnw"))) process.exit(0);
+const mvnwPath = path.join(backendDir, isWindows ? "mvnw.cmd" : "mvnw");
+if (!fs.existsSync(mvnwPath)) process.exit(0);
 
-const result = spawnSync(wrapper, ["-q", "-DskipTests", "compile"], {
+// En Windows, con shell:true el .cmd no se resuelve por nombre relativo: se pasa la ruta
+// absoluta, entre comillas por si la carpeta tiene espacios.
+const result = spawnSync(isWindows ? `"${mvnwPath}"` : "./mvnw", ["-q", "-DskipTests", "compile"], {
   cwd: backendDir,
   encoding: "utf8",
   shell: isWindows, // los .cmd de Windows solo se pueden ejecutar a través de una shell
