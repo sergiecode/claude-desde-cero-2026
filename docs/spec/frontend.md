@@ -124,6 +124,8 @@ Referencias: [Angular Material – Input](https://material.angular.dev/component
 
 Las rutas protegidas se muestran dentro del `ShellComponent` y usan `authGuard`.
 
+**Carga diferida:** cada pantalla se carga con `loadComponent`, para que el bundle inicial no supere el límite de 500 kB que trae el proyecto. No se sube el límite.
+
 ---
 
 ## 4. Autenticación y errores
@@ -136,6 +138,8 @@ Las rutas protegidas se muestran dentro del `ShellComponent` y usan `authGuard`.
   - Otros errores → el componente los recibe y decide; si no los maneja, se muestra el `detail` en un `MatSnackBar`.
   - Sin respuesta del servidor → "No se pudo conectar con el servidor".
 - **Errores de campo:** si el error trae `errors`, cada mensaje se muestra en el `mat-error` del campo correspondiente.
+- **Quién maneja cada error:** cada llamada declara qué `code` maneja la pantalla (por ejemplo, la búsqueda de cliente maneja `CLIENT_NOT_FOUND`, `INVALID_DOCUMENT` y `CLIENT_UNDERAGE`). El `errorInterceptor` no muestra snackbar para esos códigos; todos los demás van al snackbar. Este patrón lo arma la etapa 3 y lo siguen todas las pantallas.
+- **Recarga de la página:** los datos del productor se recuperan de `sessionStorage`; no se llama a `/api/auth/me` al recargar.
 
 ---
 
