@@ -12,7 +12,7 @@ import com.cotizador.service.PriceCalculation;
 public class QuoteCalculationMapper {
 
 	/** All amounts are in Argentine pesos. */
-	static final String CURRENCY = "ARS";
+	public static final String CURRENCY = "ARS";
 
 	private static final int MIN_RATE_SCALE = 2;
 

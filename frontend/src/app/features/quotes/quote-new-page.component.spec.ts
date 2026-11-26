@@ -8,7 +8,8 @@ import { HarnessLoader } from '@angular/cdk/testing';
 import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { MatInputHarness } from '@angular/material/input/testing';
 import { MatSelectHarness } from '@angular/material/select/testing';
-import { provideRouter } from '@angular/router';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { provideRouter, Router } from '@angular/router';
 
 import { CatalogApi } from '../../core/api/catalog-api.service';
 import { CLIENT_SEARCH_URL } from '../../core/api/client-api.service';
@@ -20,7 +21,7 @@ import { errorInterceptor } from '../../core/errors/error.interceptor';
 import { Client } from '../../core/models/client.model';
 import { InsuredValue } from '../../core/models/insured-value.model';
 import { InsurancePlan } from '../../core/models/plan.model';
-import { QuoteCalculation, QuoteRequest } from '../../core/models/quote.model';
+import { QuoteCalculation, QuoteDetail, QuoteRequest } from '../../core/models/quote.model';
 import { QuoteNewPageComponent } from './quote-new-page.component';
 
 const PERSON: Client = {
@@ -134,8 +135,33 @@ const CALCULATION: QuoteCalculation = {
 
 /** QuoteApi simulado; la URL y el body se prueban en quote-api.service.spec.ts. */
 function quoteStub() {
-  return { calculate: vi.fn(async (_request: QuoteRequest) => CALCULATION) };
+  return {
+    calculate: vi.fn(async (_request: QuoteRequest) => CALCULATION),
+    create: vi.fn(async (_request: QuoteRequest) => SAVED_QUOTE),
+  };
 }
+
+/** Response de `POST /api/quotes` (api.md §8.3, §8.5). */
+const SAVED_QUOTE: QuoteDetail = {
+  id: 7,
+  quoteNumber: 'COT-2026-000007',
+  status: 'CALCULATED',
+  createdAt: '2026-11-19T10:00:00-03:00',
+  validUntil: '2026-12-04T10:00:00-03:00',
+  client: PERSON,
+  vehicle: {
+    vehicleType: 'AUTO',
+    manufacturingYear: 2020,
+    brandName: 'Volkswagen',
+    modelName: 'Gol',
+    versionName: 'Base',
+    patent: 'ABC123',
+    usageType: 'PARTICULAR',
+  },
+  planName: 'Todo riesgo',
+  calculation: CALCULATION,
+  policy: null,
+};
 
 registerLocaleData(localeEsAr);
 
@@ -157,6 +183,7 @@ describe('QuoteNewPageComponent', () => {
   let planApi: ReturnType<typeof planStub>;
   let insuredValueApi: ReturnType<typeof insuredValueStub>;
   let quoteApi: ReturnType<typeof quoteStub>;
+  let snackBar: { open: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     shown = [];
@@ -164,6 +191,7 @@ describe('QuoteNewPageComponent', () => {
     planApi = planStub();
     insuredValueApi = insuredValueStub();
     quoteApi = quoteStub();
+    snackBar = { open: vi.fn() };
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -174,6 +202,7 @@ describe('QuoteNewPageComponent', () => {
         { provide: PlanApi, useValue: planApi },
         { provide: InsuredValueApi, useValue: insuredValueApi },
         { provide: QuoteApi, useValue: quoteApi },
+        { provide: MatSnackBar, useValue: snackBar },
         { provide: LOCALE_ID, useValue: 'es-AR' },
       ],
     });
@@ -1164,6 +1193,134 @@ describe('QuoteNewPageComponent', () => {
       await fillForm();
       await calculate();
       await vi.waitFor(() => expect(shown).toEqual(['Revisá los datos ingresados']));
+    });
+
+    describe('Guardar cotización', () => {
+      function saveButton(): HTMLButtonElement | null {
+        return root.querySelector<HTMLButtonElement>('[data-action="save"]');
+      }
+
+      async function calculated(): Promise<void> {
+        await fillForm();
+        await calculate();
+        await vi.waitFor(() => expect(result()).not.toBeNull());
+        await fixture.whenStable();
+      }
+
+      function navigateSpy() {
+        return vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      }
+
+      function rejectSaveWith(status: number, code: string, detail: string, errors: object[] = []) {
+        quoteApi.create.mockRejectedValueOnce(
+          new HttpErrorResponse({
+            status,
+            statusText: 'Error',
+            error: { type: 'about:blank', title: 'Error', status, detail, code, errors },
+          }),
+        );
+      }
+
+      it('AC-FE-03 con el formulario completo y sin cotizar, "Guardar cotización" no se muestra', async () => {
+        expect(saveButton()).toBeNull();
+
+        await fillForm();
+
+        expect(calculateButton().disabled).toBe(false);
+        expect(result()).toBeNull();
+        expect(saveButton()).toBeNull();
+        expect(root.textContent).not.toContain('Guardar cotización');
+      });
+
+      it('AC-FE-04 cotizado; al cambiar la patente se borra el resultado y "Guardar cotización" se oculta', async () => {
+        await calculated();
+        expect(saveButton()?.textContent?.trim()).toBe('Guardar cotización');
+
+        await (await patentInput()).setValue('ABC124');
+        await fixture.whenStable();
+
+        expect(result()).toBeNull();
+        expect(saveButton()).toBeNull();
+      });
+
+      it('Q1 cambiar el plan después de cotizar oculta "Guardar cotización"', async () => {
+        await calculated();
+        const plan = await loader.getHarness(
+          MatSelectHarness.with({ selector: '[data-field="planId"] mat-select' }),
+        );
+        await plan.open();
+        await plan.clickOptions({ text: /Terceros completo/ });
+        await fixture.whenStable();
+
+        expect(saveButton()).toBeNull();
+      });
+
+      it('al guardar envía el QuoteRequest, muestra "Cotización [número] guardada" y navega al detalle', async () => {
+        const navigate = navigateSpy();
+        await calculated();
+
+        saveButton()!.click();
+        await vi.waitFor(() => expect(navigate).toHaveBeenCalled());
+
+        expect(quoteApi.create).toHaveBeenCalledExactlyOnceWith(REQUEST);
+        expect(snackBar.open).toHaveBeenCalledWith(
+          'Cotización COT-2026-000007 guardada',
+          'Cerrar',
+          expect.anything(),
+        );
+        expect(navigate).toHaveBeenCalledWith(['/quotes', 7]);
+        expect(shown).toEqual([]);
+      });
+
+      it('"Guardar cotización" y "Cotizar" se deshabilitan mientras se guarda (sin doble envío)', async () => {
+        const navigate = navigateSpy();
+        let resolve!: (value: QuoteDetail) => void;
+        quoteApi.create.mockImplementationOnce(
+          () => new Promise<QuoteDetail>((r) => (resolve = r)),
+        );
+        await calculated();
+
+        saveButton()!.click();
+        fixture.detectChanges();
+
+        expect(saveButton()!.disabled).toBe(true);
+        expect(calculateButton().disabled).toBe(true);
+        saveButton()!.click();
+        expect(quoteApi.create).toHaveBeenCalledTimes(1);
+
+        resolve(SAVED_QUOTE);
+        await vi.waitFor(() => expect(navigate).toHaveBeenCalledTimes(1));
+      });
+
+      it('error sin errors por campo al guardar: muestra el detail en el snackbar y no navega', async () => {
+        const navigate = navigateSpy();
+        rejectSaveWith(404, 'VALUATION_NOT_FOUND', 'No hay valuación disponible para este vehículo');
+        await calculated();
+
+        saveButton()!.click();
+        await vi.waitFor(() =>
+          expect(shown).toEqual(['No hay valuación disponible para este vehículo']),
+        );
+        await fixture.whenStable();
+
+        expect(navigate).not.toHaveBeenCalled();
+        expect(snackBar.open).not.toHaveBeenCalled();
+        expect(saveButton()!.disabled).toBe(false);
+      });
+
+      it('error con errors por campo al guardar: se muestra en el campo, sin snackbar', async () => {
+        navigateSpy();
+        rejectSaveWith(400, 'INVALID_PATENT', 'La patente debe tener el formato ABC123', [
+          { field: 'patent', message: 'La patente debe tener el formato ABC123' },
+        ]);
+        await calculated();
+
+        saveButton()!.click();
+        await vi.waitFor(() =>
+          expect(fieldError('patent')).toBe('La patente debe tener el formato ABC123'),
+        );
+        expect(shown).toEqual([]);
+      });
     });
   });
 });

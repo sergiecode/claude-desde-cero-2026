@@ -22,3 +22,9 @@ export function formatFactor(factor: number, locale: string): string {
 export function formatRate(rate: number, locale: string, digitsInfo = '1.2-2'): string {
   return `${formatNumber(rate * 100, locale, digitsInfo)} %`;
 }
+
+/**
+ * Zona horaria de las fechas con hora del backend (America/Argentina/Buenos_Aires, sin horario
+ * de verano). Se pasa al `DatePipe` para que la hora no dependa de la zona del navegador.
+ */
+export const DISPLAY_TIMEZONE = '-0300';

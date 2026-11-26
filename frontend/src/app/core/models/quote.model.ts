@@ -1,4 +1,5 @@
 import { VehicleType, VehicleUsageType } from './catalog.model';
+import { Client } from './client.model';
 
 /** Estado de una cotización (api.md, data-model.md §2). */
 export type QuoteStatus = 'CALCULATED' | 'EMITTED' | 'EXPIRED';
@@ -43,4 +44,50 @@ export interface QuoteCalculation {
   taxes: number;
   totalPrice: number;
   currency: string;
+}
+
+/** Vehículo de una cotización guardada (api.md §8.5). */
+export interface QuoteVehicle {
+  vehicleType: VehicleType;
+  manufacturingYear: number;
+  brandName: string;
+  modelName: string;
+  versionName: string;
+  patent: string;
+  usageType: VehicleUsageType;
+}
+
+/** Póliza emitida a partir de una cotización (api.md §8.5); `null` si no se emitió. */
+export interface QuotePolicy {
+  id: number;
+  policyNumber: string;
+}
+
+/** Response de `POST /api/quotes` y `GET /api/quotes/{id}` (api.md §8.3, §8.5). */
+export interface QuoteDetail {
+  id: number;
+  quoteNumber: string;
+  status: QuoteStatus;
+  createdAt: string;
+  validUntil: string;
+  client: Client;
+  vehicle: QuoteVehicle;
+  planName: string;
+  calculation: QuoteCalculation;
+  policy: QuotePolicy | null;
+}
+
+/** Elemento de `GET /api/quotes` (api.md §8.4). */
+export interface QuoteSummary {
+  id: number;
+  quoteNumber: string;
+  createdAt: string;
+  clientName: string;
+  vehicleType: VehicleType;
+  brandName: string;
+  modelName: string;
+  planName: string;
+  totalPrice: number;
+  currency: string;
+  status: QuoteStatus;
 }

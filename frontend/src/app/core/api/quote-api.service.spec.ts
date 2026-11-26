@@ -6,8 +6,8 @@ import { provideRouter } from '@angular/router';
 import { ErrorMessageService } from '../errors/error-message.service';
 import { errorInterceptor } from '../errors/error.interceptor';
 import { HANDLED_ERROR_CODES } from '../errors/handled-error-codes';
-import { QuoteCalculation, QuoteRequest } from '../models/quote.model';
-import { QUOTE_CALCULATE_URL, QuoteApi } from './quote-api.service';
+import { QuoteCalculation, QuoteDetail, QuoteRequest, QuoteSummary } from '../models/quote.model';
+import { QUOTE_CALCULATE_URL, QUOTES_URL, QuoteApi } from './quote-api.service';
 
 const REQUEST: QuoteRequest = {
   clientId: 1,
@@ -86,5 +86,71 @@ describe('QuoteApi', () => {
     );
     await expect(result).rejects.toBeDefined();
     expect(shown).toEqual([]);
+  });
+
+  describe('cotizaciones guardadas', () => {
+    const DETAIL = { id: 1, quoteNumber: 'COT-2026-000001' } as QuoteDetail;
+    const SUMMARIES = [{ id: 1, quoteNumber: 'COT-2026-000001' }] as QuoteSummary[];
+
+    function notFound(): object {
+      return {
+        type: 'about:blank',
+        title: 'Not Found',
+        status: 404,
+        detail: 'Cotización no encontrada',
+        code: 'QUOTE_NOT_FOUND',
+        errors: [],
+      };
+    }
+
+    it('create: POST /api/quotes con el QuoteRequest; la pantalla maneja todos los errores', async () => {
+      const result = api.create(REQUEST);
+
+      const req = httpTesting.expectOne(QUOTES_URL);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual(REQUEST);
+      expect(req.request.context.get(HANDLED_ERROR_CODES)).toEqual(['*']);
+      req.flush(DETAIL, { status: 201, statusText: 'Created' });
+      await expect(result).resolves.toEqual(DETAIL);
+    });
+
+    it('list: GET /api/quotes devuelve el listado en el orden del backend', async () => {
+      const result = api.list();
+
+      const req = httpTesting.expectOne(QUOTES_URL);
+      expect(req.request.method).toBe('GET');
+      req.flush(SUMMARIES);
+      await expect(result).resolves.toEqual(SUMMARIES);
+    });
+
+    it('get: GET /api/quotes/{id}', async () => {
+      const result = api.get(1);
+
+      const req = httpTesting.expectOne('/api/quotes/1');
+      expect(req.request.method).toBe('GET');
+      req.flush(DETAIL);
+      await expect(result).resolves.toEqual(DETAIL);
+    });
+
+    it('get: QUOTE_NOT_FOUND lo maneja la pantalla, sin snackbar', async () => {
+      const result = api.get(99);
+      httpTesting
+        .expectOne('/api/quotes/99')
+        .flush(notFound(), { status: 404, statusText: 'Not Found' });
+
+      await expect(result).rejects.toBeDefined();
+      expect(shown).toEqual([]);
+    });
+
+    it('get: otros errores van al snackbar', async () => {
+      const result = api.get(1);
+      httpTesting.expectOne('/api/quotes/1').flush(
+        { ...notFound(), status: 500, code: 'INTERNAL_ERROR', detail: 'Error interno' },
+        { status: 500, statusText: 'Error' },
+      );
+
+      await expect(result).rejects.toBeDefined();
+      expect(shown).toEqual(['Error interno']);
+    });
   });
 });

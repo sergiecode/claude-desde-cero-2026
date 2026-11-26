@@ -1,2 +1,2 @@
-- [Project decisions](project_decisions.md) — allowed_usages=17, CHECKs V1, BCrypt, VehicleModel; etapas 3-9: decisiones aceptadas, CRLF recurrente, pendientes etapa 10
+- [Project decisions](project_decisions.md) — allowed_usages=17, CHECKs V1, VehicleModel; etapas 3-10: decisiones aceptadas, CRLF ya normalizado, pendientes etapa 11
 - [SPEC diffs are user updates](project_spec_diffs_are_user_updates.md) — uncommitted docs/spec changes are source of truth; criteria may be split across stages

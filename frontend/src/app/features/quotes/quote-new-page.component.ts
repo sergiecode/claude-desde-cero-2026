@@ -16,6 +16,8 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 
 import { CatalogApi } from '../../core/api/catalog-api.service';
 import { CLIENT_SEARCH_ERROR_CODES, ClientApi } from '../../core/api/client-api.service';
@@ -174,6 +176,8 @@ export class QuoteNewPageComponent {
   private readonly quoteApi = inject(QuoteApi);
   private readonly messages = inject(ErrorMessageService);
   private readonly locale = inject(LOCALE_ID);
+  private readonly router = inject(Router);
+  private readonly snackBar = inject(MatSnackBar);
 
   protected readonly documentTypes = (Object.keys(DOCUMENT_TYPE_LABELS) as DocumentType[]).map(
     (value) => ({ value, label: DOCUMENT_TYPE_LABELS[value] }),
@@ -325,6 +329,10 @@ export class QuoteNewPageComponent {
   });
 
   protected readonly calculating = signal(false);
+  protected readonly saving = signal(false);
+
+  /** Hay una llamada de cotizar o guardar en curso: los dos botones se deshabilitan. */
+  private readonly busy = computed(() => this.calculating() || this.saving());
 
   protected readonly quoteForm = form(this.model, (f) => {
     required(f.documentType, { message: REQUIRED_MESSAGE });
@@ -428,8 +436,14 @@ export class QuoteNewPageComponent {
       this.clientFound() &&
       this.valuation().range !== null &&
       this.quoteForm().valid() &&
-      !this.calculating(),
+      !this.busy(),
   );
+
+  /**
+   * Q1: "Guardar cotización" se muestra solo con un resultado, y el resultado se borra con
+   * cualquier cambio en el formulario (`calculation` depende de todos sus valores).
+   */
+  protected readonly canShowSave = computed(() => this.calculation() !== null);
 
   /**
    * V4: el productor cambió un select del vehículo; se vacían los que dependen de él.
@@ -490,9 +504,31 @@ export class QuoteNewPageComponent {
         this.calculation.set(result);
       }
     } catch (error) {
-      this.handleCalculateError(error, key);
+      this.handleQuoteError(error, key);
     } finally {
       this.calculating.set(false);
+    }
+  }
+
+  /**
+   * Guarda la cotización (api.md §8.3) con los mismos datos que se cotizaron (Q1): muestra
+   * "Cotización [número] guardada" y abre su detalle. Deshabilitado durante la llamada.
+   */
+  protected async save(): Promise<void> {
+    const request = this.buildRequest();
+    if (!this.canShowSave() || this.busy() || !request) {
+      return;
+    }
+    const key = this.formKey();
+    this.saving.set(true);
+    try {
+      const quote = await this.quoteApi.create(request);
+      this.snackBar.open(`Cotización ${quote.quoteNumber} guardada`, 'Cerrar', { duration: 5000 });
+      await this.router.navigate(['/quotes', quote.id]);
+    } catch (error) {
+      this.handleQuoteError(error, key);
+    } finally {
+      this.saving.set(false);
     }
   }
 
@@ -528,11 +564,11 @@ export class QuoteNewPageComponent {
   }
 
   /**
-   * Errores de "Cotizar" (frontend.md §4 y §5.4): los que traen `errors` de campos del formulario
+   * Errores de "Cotizar" y "Guardar cotización" (frontend.md §4 y §5.4): los que traen `errors` de campos del formulario
    * se muestran en esos campos; el resto, en el snackbar. Sin conexión y 401 ya los resolvió
    * el errorInterceptor.
    */
-  private handleCalculateError(error: unknown, key: string): void {
+  private handleQuoteError(error: unknown, key: string): void {
     if (error instanceof HttpErrorResponse && (error.status === 0 || error.status === 401)) {
       return;
     }

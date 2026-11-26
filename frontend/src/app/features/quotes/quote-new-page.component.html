@@ -220,6 +220,17 @@
     >
       Cotizar
     </button>
+    @if (canShowSave()) {
+      <button
+        matButton="filled"
+        type="button"
+        data-action="save"
+        [disabled]="saving() || calculating()"
+        (click)="save()"
+      >
+        Guardar cotización
+      </button>
+    }
   </div>
 
   @if (calculation(); as result) {

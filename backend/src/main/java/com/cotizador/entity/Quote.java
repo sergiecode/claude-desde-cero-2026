@@ -405,4 +405,16 @@ public class Quote {
 		this.validUntil = validUntil;
 	}
 
+	/**
+	 * Expiration on read (backend.md §7.2, rule Q3): a CALCULATED quote whose validity ended before {@code now}
+	 * becomes EXPIRED. An EMITTED quote never expires (manual §8.1). Returns true when the status changed.
+	 */
+	public boolean expireIfOverdue(OffsetDateTime now) {
+		if (status == QuoteStatus.CALCULATED && now.isAfter(validUntil)) {
+			status = QuoteStatus.EXPIRED;
+			return true;
+		}
+		return false;
+	}
+
 }

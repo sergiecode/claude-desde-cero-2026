@@ -110,6 +110,11 @@ describe('LoginPageComponent', () => {
     });
     await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/quotes'));
     expect(sessionStorage.getItem('auth.token')).toBe('jwt-token');
+
+    // "Mis cotizaciones" pide el listado al abrirse.
+    const httpTesting = TestBed.inject(HttpTestingController);
+    const list = await vi.waitFor(() => httpTesting.expectOne('/api/quotes'));
+    list.flush([]);
   });
 
   it('INVALID_CREDENTIALS: muestra el mensaje debajo del formulario y no usa el snackbar', async () => {

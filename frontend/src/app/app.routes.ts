@@ -32,6 +32,14 @@ export const routes: Routes = [
           ),
         title: 'Nueva cotización',
       },
+      {
+        path: 'quotes/:id',
+        loadComponent: () =>
+          import('./features/quotes/quote-detail-page.component').then(
+            (m) => m.QuoteDetailPageComponent,
+          ),
+        title: 'Detalle de cotización',
+      },
       { path: '', pathMatch: 'full', redirectTo: 'quotes' },
     ],
   },
