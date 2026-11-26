@@ -67,7 +67,89 @@
     <mat-card-header>
       <mat-card-title>Vehículo</mat-card-title>
     </mat-card-header>
-    <mat-card-content></mat-card-content>
+    <mat-card-content>
+      <div class="quote-new__vehicle">
+        <mat-form-field appearance="outline" data-field="vehicleType">
+          <mat-label>Tipo de vehículo</mat-label>
+          <mat-select [formField]="quoteForm.vehicleType">
+            @for (type of vehicleTypes(); track type.value) {
+              <mat-option [value]="type.value">{{ type.label }}</mat-option>
+            }
+          </mat-select>
+          @if (quoteForm.vehicleType().errors().length) {
+            <mat-error>{{ quoteForm.vehicleType().errors()[0].message }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" data-field="manufacturingYear">
+          <mat-label>Año de fabricación</mat-label>
+          <mat-select [formField]="quoteForm.manufacturingYear">
+            @for (year of years(); track year) {
+              <mat-option [value]="year">{{ year }}</mat-option>
+            }
+          </mat-select>
+          @if (quoteForm.manufacturingYear().errors().length) {
+            <mat-error>{{ quoteForm.manufacturingYear().errors()[0].message }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" data-field="brandId">
+          <mat-label>Marca</mat-label>
+          <mat-select [formField]="quoteForm.brandId">
+            @for (brand of brands(); track brand.id) {
+              <mat-option [value]="brand.id">{{ brand.name }}</mat-option>
+            }
+          </mat-select>
+          @if (quoteForm.brandId().errors().length) {
+            <mat-error>{{ quoteForm.brandId().errors()[0].message }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" data-field="modelId">
+          <mat-label>Modelo</mat-label>
+          <mat-select [formField]="quoteForm.modelId">
+            @for (vehicleModel of models(); track vehicleModel.id) {
+              <mat-option [value]="vehicleModel.id">{{ vehicleModel.name }}</mat-option>
+            }
+          </mat-select>
+          @if (quoteForm.modelId().errors().length) {
+            <mat-error>{{ quoteForm.modelId().errors()[0].message }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" data-field="versionId">
+          <mat-label>Versión</mat-label>
+          <mat-select [formField]="quoteForm.versionId">
+            @for (version of versions(); track version.id) {
+              <mat-option [value]="version.id">{{ version.name }}</mat-option>
+            }
+          </mat-select>
+          @if (quoteForm.versionId().errors().length) {
+            <mat-error>{{ quoteForm.versionId().errors()[0].message }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" data-field="usageType">
+          <mat-label>Tipo de uso</mat-label>
+          <mat-select [formField]="quoteForm.usageType">
+            @for (usage of usageTypes(); track usage.value) {
+              <mat-option [value]="usage.value">{{ usage.label }}</mat-option>
+            }
+          </mat-select>
+          @if (quoteForm.usageType().errors().length) {
+            <mat-error>{{ quoteForm.usageType().errors()[0].message }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" data-field="patent">
+          <mat-label>Patente</mat-label>
+          <input matInput [formField]="quoteForm.patent" />
+          @if (quoteForm.patent().errors().length) {
+            <mat-error>{{ quoteForm.patent().errors()[0].message }}</mat-error>
+          }
+        </mat-form-field>
+      </div>
+    </mat-card-content>
   </mat-card>
 
   <mat-card

@@ -1,0 +1,1 @@
+- [Project decisions](project_decisions.md) — allowed_usages=17, CHECKs V1, hash BCrypt, nombres VehicleModel; etapas 3-5: type corregido, AC-CLI-06 calc->etapa 9, CRLF, inert, alcance etapa 5 vs 6

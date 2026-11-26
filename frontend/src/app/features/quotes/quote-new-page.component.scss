@@ -39,3 +39,10 @@
 .quote-new__block--disabled {
   opacity: 0.5;
 }
+
+.quote-new__vehicle {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0 16px;
+  padding-top: 16px;
+}

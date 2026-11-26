@@ -7,6 +7,7 @@ import { MatInputHarness } from '@angular/material/input/testing';
 import { MatSelectHarness } from '@angular/material/select/testing';
 import { provideRouter } from '@angular/router';
 
+import { CatalogApi } from '../../core/api/catalog-api.service';
 import { CLIENT_SEARCH_URL } from '../../core/api/client-api.service';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
 import { errorInterceptor } from '../../core/errors/error.interceptor';
@@ -43,21 +44,61 @@ const COMPANY: Client = {
   email: 'contacto@transportesdelsur.test',
 };
 
+/**
+ * CatalogApi simulado: responde al instante para que la cascada no deje pedidos HTTP abiertos
+ * (los recursos pendientes no dejan estabilizar el fixture). Las URLs y los query params
+ * se prueban en catalog-api.service.spec.ts.
+ */
+function catalogStub() {
+  return {
+    vehicleTypes: vi.fn(async () => ['AUTO', 'MOTO', 'CAMIONETA', 'CAMION']),
+    years: vi.fn(async () => [2026, 2025, 2020]),
+    brands: vi.fn(async () => [
+      { id: 3, name: 'Fiat' },
+      { id: 2, name: 'Volkswagen' },
+    ]),
+    models: vi.fn(async () => [
+      { id: 3, name: 'Gol' },
+      { id: 4, name: 'Polo' },
+    ]),
+    versions: vi.fn(async () => [
+      { id: 5, name: 'Base' },
+      { id: 6, name: 'Full' },
+    ]),
+    usageTypes: vi.fn(async (vehicleType: string) =>
+      vehicleType === 'CAMION'
+        ? ['COMERCIAL', 'TRANSPORTE_CARGA']
+        : ['PARTICULAR', 'TAXI_REMIS', 'DELIVERY'],
+    ),
+  };
+}
+
+type VehicleField =
+  | 'vehicleType'
+  | 'manufacturingYear'
+  | 'brandId'
+  | 'modelId'
+  | 'versionId'
+  | 'usageType';
+
 describe('QuoteNewPageComponent', () => {
   let fixture: ComponentFixture<QuoteNewPageComponent>;
   let loader: HarnessLoader;
   let root: HTMLElement;
   let httpTesting: HttpTestingController;
   let shown: string[];
+  let catalog: ReturnType<typeof catalogStub>;
 
   beforeEach(async () => {
     shown = [];
+    catalog = catalogStub();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         provideHttpClient(withInterceptors([errorInterceptor])),
         provideHttpClientTesting(),
         { provide: ErrorMessageService, useValue: { show: (m: string) => shown.push(m) } },
+        { provide: CatalogApi, useValue: catalog },
       ],
     });
     fixture = TestBed.createComponent(QuoteNewPageComponent);
@@ -116,6 +157,46 @@ describe('QuoteNewPageComponent', () => {
 
   function errorText(): string | undefined {
     return block('client').querySelector('mat-error')?.textContent?.trim();
+  }
+
+  function vehicleSelect(field: VehicleField): Promise<MatSelectHarness> {
+    return loader.getHarness(
+      MatSelectHarness.with({ selector: `[data-field="${field}"] mat-select` }),
+    );
+  }
+
+  function patentInput(): Promise<MatInputHarness> {
+    return loader.getHarness(MatInputHarness.with({ selector: '[data-field="patent"] input' }));
+  }
+
+  async function choose(field: VehicleField, text: string): Promise<void> {
+    const select = await vehicleSelect(field);
+    await select.open();
+    await select.clickOptions({ text });
+    await fixture.whenStable();
+  }
+
+  async function disabledFields(): Promise<Record<string, boolean>> {
+    const fields: VehicleField[] = [
+      'vehicleType',
+      'manufacturingYear',
+      'brandId',
+      'modelId',
+      'versionId',
+      'usageType',
+    ];
+    const result: Record<string, boolean> = {};
+    for (const field of fields) {
+      result[field] = await (await vehicleSelect(field)).isDisabled();
+    }
+    result['patent'] = await (await patentInput()).isDisabled();
+    return result;
+  }
+
+  async function findClient(): Promise<void> {
+    await enterDocument('DNI', '30123456');
+    await search();
+    await respond(PERSON);
   }
 
   it('AC-FE-01 sin cliente encontrado, los bloques de vehículo y plan están deshabilitados', () => {
@@ -257,5 +338,131 @@ describe('QuoteNewPageComponent', () => {
     expect(searchButton().disabled).toBe(false);
     await enterDocument('CUIT', '30712345671');
     expect(searchButton().disabled).toBe(false);
+  });
+
+  describe('Bloque 2 — Vehículo', () => {
+    it('AC-FE-01 sin cliente, todos los campos del vehículo están deshabilitados', async () => {
+      expect(await disabledFields()).toEqual({
+        vehicleType: true,
+        manufacturingYear: true,
+        brandId: true,
+        modelId: true,
+        versionId: true,
+        usageType: true,
+        patent: true,
+      });
+    });
+
+    it('carga los tipos de vehículo al iniciar y los muestra con las etiquetas en español', async () => {
+      await findClient();
+      const select = await vehicleSelect('vehicleType');
+      await select.open();
+      const texts = await Promise.all((await select.getOptions()).map((o) => o.getText()));
+      expect(texts).toEqual(['Auto', 'Moto', 'Camioneta', 'Camión']);
+      await select.close();
+    });
+
+    it('con cliente, cada select está deshabilitado hasta que el anterior tenga valor', async () => {
+      await findClient();
+      expect(await disabledFields()).toEqual({
+        vehicleType: false,
+        manufacturingYear: true,
+        brandId: true,
+        modelId: true,
+        versionId: true,
+        usageType: true,
+        patent: false,
+      });
+
+      await choose('vehicleType', 'Auto');
+      expect(await disabledFields()).toMatchObject({
+        manufacturingYear: false,
+        brandId: true,
+        modelId: true,
+        versionId: true,
+        usageType: false,
+      });
+
+      await choose('manufacturingYear', '2020');
+      expect(await disabledFields()).toMatchObject({ brandId: false, modelId: true, versionId: true });
+
+      await choose('brandId', 'Volkswagen');
+      expect(await disabledFields()).toMatchObject({ modelId: false, versionId: true });
+
+      await choose('modelId', 'Gol');
+      expect(await disabledFields()).toMatchObject({ versionId: false });
+    });
+
+    it('carga en cascada años, marcas, modelos y versiones con los parámetros correctos', async () => {
+      await findClient();
+      expect(catalog.vehicleTypes).toHaveBeenCalledTimes(1);
+      // Sin tipo elegido no se pide ningún catálogo dependiente.
+      for (const fn of [catalog.years, catalog.brands, catalog.models, catalog.versions]) {
+        expect(fn).not.toHaveBeenCalled();
+      }
+
+      await choose('vehicleType', 'Auto');
+      expect(catalog.years).toHaveBeenCalledExactlyOnceWith('AUTO');
+      expect(catalog.brands).not.toHaveBeenCalled();
+
+      await choose('manufacturingYear', '2020');
+      expect(catalog.brands).toHaveBeenCalledExactlyOnceWith('AUTO', 2020);
+      expect(catalog.models).not.toHaveBeenCalled();
+
+      await choose('brandId', 'Volkswagen');
+      expect(catalog.models).toHaveBeenCalledExactlyOnceWith('AUTO', 2020, 2);
+      expect(catalog.versions).not.toHaveBeenCalled();
+
+      await choose('modelId', 'Gol');
+      expect(catalog.versions).toHaveBeenCalledExactlyOnceWith(3);
+
+      await choose('versionId', 'Full');
+      expect(await (await vehicleSelect('versionId')).getValueText()).toBe('Full');
+    });
+
+    it('pide los tipos de uso al elegir el tipo y los vuelve a pedir cuando el tipo cambia', async () => {
+      await findClient();
+      expect(catalog.usageTypes).not.toHaveBeenCalled();
+
+      await choose('vehicleType', 'Auto');
+      expect(catalog.usageTypes).toHaveBeenCalledExactlyOnceWith('AUTO');
+
+      const usage = await vehicleSelect('usageType');
+      await usage.open();
+      const texts = await Promise.all((await usage.getOptions()).map((o) => o.getText()));
+      expect(texts).toEqual(['Particular', 'Taxi / remís', 'Delivery']);
+      await usage.close();
+
+      await choose('vehicleType', 'Camión');
+      expect(catalog.usageTypes).toHaveBeenCalledTimes(2);
+      expect(catalog.usageTypes).toHaveBeenLastCalledWith('CAMION');
+      await usage.open();
+      const camion = await Promise.all((await usage.getOptions()).map((o) => o.getText()));
+      expect(camion).toEqual(['Comercial', 'Transporte de carga']);
+      await usage.close();
+    });
+
+    it.each([
+      ['AB1234', 'La patente debe tener el formato ABC123'],
+      ['ABC12', 'La patente debe tener el formato ABC123'],
+      ['', 'Completá este campo'],
+    ])('patente "%s": muestra "%s"', async (value, message) => {
+      await findClient();
+      const input = await patentInput();
+      await input.setValue(value);
+      await input.blur();
+      await fixture.whenStable();
+      const error = block('vehicle').querySelector('[data-field="patent"] mat-error');
+      expect(error?.textContent?.trim()).toBe(message);
+    });
+
+    it('patente ABC123 es válida', async () => {
+      await findClient();
+      const input = await patentInput();
+      await input.setValue('ABC123');
+      await input.blur();
+      await fixture.whenStable();
+      expect(block('vehicle').querySelector('[data-field="patent"] mat-error')).toBeNull();
+    });
   });
 });

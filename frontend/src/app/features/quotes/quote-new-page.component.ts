@@ -6,22 +6,33 @@ import {
   computed,
   inject,
   linkedSignal,
+  resource,
   signal,
 } from '@angular/core';
-import { form, FormField, required, validate } from '@angular/forms/signals';
+import { disabled, form, FormField, pattern, required, validate } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 
+import { CatalogApi } from '../../core/api/catalog-api.service';
 import { CLIENT_SEARCH_ERROR_CODES, ClientApi } from '../../core/api/client-api.service';
 import { asProblemDetails } from '../../core/errors/error.interceptor';
+import { CatalogItem, VehicleType, VehicleUsageType } from '../../core/models/catalog.model';
 import { Client, DocumentType } from '../../core/models/client.model';
-import { DOCUMENT_TYPE_LABELS } from '../../shared/labels';
+import {
+  DOCUMENT_TYPE_LABELS,
+  VEHICLE_TYPE_LABELS,
+  VEHICLE_USAGE_TYPE_LABELS,
+} from '../../shared/labels';
 
 const REQUIRED_MESSAGE = 'Completá este campo';
 const INVALID_DOCUMENT_MESSAGE = 'El número de documento no es válido';
+const INVALID_PATENT_MESSAGE = 'La patente debe tener el formato ABC123';
+
+/** Patente: 3 letras y 3 números (V6). */
+const PATENT_PATTERN = /^[A-Z]{3}\d{3}$/;
 
 /**
  * DNI: 7 u 8 dígitos (C3). CUIT: 11 dígitos, con o sin guiones (C4);
@@ -32,9 +43,22 @@ const DOCUMENT_PATTERNS: Record<DocumentType, RegExp> = {
   CUIT: /^\d{2}-?\d{8}-?\d$/,
 };
 
+/** Los campos vacíos se representan con `''` (sin `null`, frontend.md §2.1). */
 interface QuoteFormModel {
   documentType: DocumentType | '';
   documentNumber: string;
+  vehicleType: VehicleType | '';
+  manufacturingYear: number | '';
+  brandId: number | '';
+  modelId: number | '';
+  versionId: number | '';
+  usageType: VehicleUsageType | '';
+  patent: string;
+}
+
+interface Option<T> {
+  value: T;
+  label: string;
 }
 
 /** Resultado de la búsqueda del cliente para el documento ingresado. */
@@ -46,9 +70,15 @@ interface ClientSearchState {
 
 const EMPTY_SEARCH: ClientSearchState = { client: null, error: '' };
 
+/** Valor de un recurso de catálogo, o una lista vacía mientras carga, sin parámetros o con error. */
+function optionsOf<T>(r: { hasValue(): boolean; value(): T[] | undefined }): T[] {
+  return r.hasValue() ? (r.value() ?? []) : [];
+}
+
 /**
- * Nueva cotización (frontend.md §5.4). Bloque 1 (Cliente) completo; los bloques 2 y 3
- * se completan en las etapas siguientes y quedan deshabilitados sin cliente (C1).
+ * Nueva cotización (frontend.md §5.4). Bloque 1 (Cliente) y bloque 2 (Vehículo, cascada de
+ * catálogos); el bloque 3 se completa en las etapas siguientes. Los bloques 2 y 3 quedan
+ * deshabilitados sin cliente (C1).
  */
 @Component({
   selector: 'app-quote-new-page',
@@ -67,12 +97,23 @@ const EMPTY_SEARCH: ClientSearchState = { client: null, error: '' };
 })
 export class QuoteNewPageComponent {
   private readonly clientApi = inject(ClientApi);
+  private readonly catalogApi = inject(CatalogApi);
 
   protected readonly documentTypes = (Object.keys(DOCUMENT_TYPE_LABELS) as DocumentType[]).map(
     (value) => ({ value, label: DOCUMENT_TYPE_LABELS[value] }),
   );
 
-  protected readonly model = signal<QuoteFormModel>({ documentType: '', documentNumber: '' });
+  protected readonly model = signal<QuoteFormModel>({
+    documentType: '',
+    documentNumber: '',
+    vehicleType: '',
+    manufacturingYear: '',
+    brandId: '',
+    modelId: '',
+    versionId: '',
+    usageType: '',
+    patent: '',
+  });
 
   /** Documento ingresado; cuando cambia, se descarta el resultado de la búsqueda anterior. */
   private readonly documentKey = computed(
@@ -92,6 +133,66 @@ export class QuoteNewPageComponent {
   /** C1: los bloques de vehículo y plan se habilitan solo con un cliente encontrado. */
   protected readonly clientFound = computed(() => this.client() !== null);
 
+  // Bloque 2 — Vehículo: cada catálogo se pide cuando el campo anterior tiene valor (V4).
+  private readonly vehicleTypesResource = resource({
+    loader: () => this.catalogApi.vehicleTypes(),
+  });
+
+  private readonly yearsResource = resource({
+    params: () => this.model().vehicleType || undefined,
+    loader: ({ params }) => this.catalogApi.years(params),
+  });
+
+  private readonly brandsResource = resource({
+    params: () => {
+      const { vehicleType, manufacturingYear } = this.model();
+      return vehicleType && manufacturingYear !== ''
+        ? { vehicleType, year: manufacturingYear }
+        : undefined;
+    },
+    loader: ({ params }) => this.catalogApi.brands(params.vehicleType, params.year),
+  });
+
+  private readonly modelsResource = resource({
+    params: () => {
+      const { vehicleType, manufacturingYear, brandId } = this.model();
+      return vehicleType && manufacturingYear !== '' && brandId !== ''
+        ? { vehicleType, year: manufacturingYear, brandId }
+        : undefined;
+    },
+    loader: ({ params }) => this.catalogApi.models(params.vehicleType, params.year, params.brandId),
+  });
+
+  private readonly versionsResource = resource({
+    params: () => {
+      const { modelId } = this.model();
+      return modelId !== '' ? modelId : undefined;
+    },
+    loader: ({ params }) => this.catalogApi.versions(params),
+  });
+
+  private readonly usageTypesResource = resource({
+    params: () => this.model().vehicleType || undefined,
+    loader: ({ params }) => this.catalogApi.usageTypes(params),
+  });
+
+  protected readonly vehicleTypes = computed<Option<VehicleType>[]>(() =>
+    optionsOf(this.vehicleTypesResource).map((value) => ({
+      value,
+      label: VEHICLE_TYPE_LABELS[value],
+    })),
+  );
+  protected readonly years = computed<number[]>(() => optionsOf(this.yearsResource));
+  protected readonly brands = computed<CatalogItem[]>(() => optionsOf(this.brandsResource));
+  protected readonly models = computed<CatalogItem[]>(() => optionsOf(this.modelsResource));
+  protected readonly versions = computed<CatalogItem[]>(() => optionsOf(this.versionsResource));
+  protected readonly usageTypes = computed<Option<VehicleUsageType>[]>(() =>
+    optionsOf(this.usageTypesResource).map((value) => ({
+      value,
+      label: VEHICLE_USAGE_TYPE_LABELS[value],
+    })),
+  );
+
   protected readonly quoteForm = form(this.model, (f) => {
     required(f.documentType, { message: REQUIRED_MESSAGE });
     required(f.documentNumber, { message: REQUIRED_MESSAGE });
@@ -108,6 +209,25 @@ export class QuoteNewPageComponent {
       const error = this.search().error;
       return error ? { kind: 'clientSearch', message: error } : null;
     });
+
+    // Bloque 2: todo deshabilitado sin cliente (C1); cada select, hasta que el anterior tenga valor.
+    const noClient = () => !this.clientFound();
+    disabled(f.vehicleType, noClient);
+    disabled(f.manufacturingYear, ({ valueOf }) => noClient() || valueOf(f.vehicleType) === '');
+    disabled(f.brandId, ({ valueOf }) => noClient() || valueOf(f.manufacturingYear) === '');
+    disabled(f.modelId, ({ valueOf }) => noClient() || valueOf(f.brandId) === '');
+    disabled(f.versionId, ({ valueOf }) => noClient() || valueOf(f.modelId) === '');
+    disabled(f.usageType, ({ valueOf }) => noClient() || valueOf(f.vehicleType) === '');
+    disabled(f.patent, noClient);
+
+    required(f.vehicleType, { message: REQUIRED_MESSAGE });
+    required(f.manufacturingYear, { message: REQUIRED_MESSAGE });
+    required(f.brandId, { message: REQUIRED_MESSAGE });
+    required(f.modelId, { message: REQUIRED_MESSAGE });
+    required(f.versionId, { message: REQUIRED_MESSAGE });
+    required(f.usageType, { message: REQUIRED_MESSAGE });
+    required(f.patent, { message: REQUIRED_MESSAGE });
+    pattern(f.patent, PATENT_PATTERN, { message: INVALID_PATENT_MESSAGE });
   });
 
   protected readonly canSearch = computed(
