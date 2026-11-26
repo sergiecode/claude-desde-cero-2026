@@ -14,7 +14,7 @@ public enum ErrorCode {
 	INVALID_DOCUMENT(HttpStatus.BAD_REQUEST, "El número de documento no es válido"),
 	CLIENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Cliente no encontrado"),
 	CLIENT_UNDERAGE(HttpStatus.UNPROCESSABLE_CONTENT, "El cliente debe ser mayor de 18 años"),
-	INVALID_YEAR(HttpStatus.BAD_REQUEST, "El año debe estar entre 2010 y %s"),
+	INVALID_YEAR(HttpStatus.BAD_REQUEST, "El año debe estar entre %s y %s"),
 	INVALID_VEHICLE(HttpStatus.BAD_REQUEST, "La marca, el modelo o la versión no corresponden al tipo y año elegidos"),
 	USAGE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "El tipo de uso no está permitido para este vehículo"),
 	INVALID_PATENT(HttpStatus.BAD_REQUEST, "La patente debe tener el formato ABC123"),

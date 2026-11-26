@@ -49,7 +49,7 @@ public class ValuationService {
 	public void validateYear(int manufacturingYear) {
 		int currentYear = currentYear();
 		if (manufacturingYear < pricingProperties.minVehicleYear() || manufacturingYear > currentYear) {
-			throw new BusinessException(ErrorCode.INVALID_YEAR, currentYear);
+			throw new BusinessException(ErrorCode.INVALID_YEAR, pricingProperties.minVehicleYear(), currentYear);
 		}
 	}
 

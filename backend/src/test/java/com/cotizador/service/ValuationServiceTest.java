@@ -128,6 +128,18 @@ class ValuationServiceTest {
 				.isEqualTo(ErrorCode.INVALID_YEAR);
 	}
 
+	@Test
+	void V3_minimumYearInMessageComesFromConfiguration() {
+		PricingProperties properties = new PricingProperties(
+				new BigDecimal("0.21"), new BigDecimal("1.00"), 15, 2012, 18,
+				new BigDecimal("0.05"), new BigDecimal("0.30"), new BigDecimal("0.80"), new BigDecimal("1.20"), 30);
+		ValuationService serviceWithOtherMinimum = new ValuationService(versionRepository, properties, CLOCK);
+
+		assertThatThrownBy(() -> serviceWithOtherMinimum.validateYear(2011))
+				.isInstanceOf(BusinessException.class)
+				.hasMessage("El año debe estar entre 2012 y 2026");
+	}
+
 	@ParameterizedTest
 	@ValueSource(ints = { 2010, 2018, 2026 })
 	void V3_yearBetweenMinimumAndCurrentYearIsValid(int year) {

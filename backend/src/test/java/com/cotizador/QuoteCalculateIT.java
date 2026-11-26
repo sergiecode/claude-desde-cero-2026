@@ -164,8 +164,7 @@ class QuoteCalculateIT {
 				.andReturn().getResponse().getContentAsString();
 
 		assertThat(second).isEqualTo(first);
-		assertThat(quotesBefore).isZero();
-		assertThat(quoteRepository.count()).isZero();
+		assertThat(quoteRepository.count()).isEqualTo(quotesBefore);
 	}
 
 	// --- Insured amount (S5) ---

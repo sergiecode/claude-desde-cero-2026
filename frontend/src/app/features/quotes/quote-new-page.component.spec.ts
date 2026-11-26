@@ -1132,15 +1132,15 @@ describe('QuoteNewPageComponent', () => {
       expect(calculateButton().disabled).toBe(false);
     });
 
-    it('S5 INSURED_AMOUNT_OUT_OF_RANGE con errors: se muestra en la suma asegurada', async () => {
+    it('S5 INSURED_AMOUNT_OUT_OF_RANGE sin errors (como lo manda el backend): muestra el detail en el snackbar', async () => {
       const message = 'La suma asegurada debe estar entre $ 8.640.000,00 y $ 12.960.000,00';
-      rejectWith(400, 'INSURED_AMOUNT_OUT_OF_RANGE', message, [
-        { field: 'insuredAmount', message },
-      ]);
+      rejectWith(400, 'INSURED_AMOUNT_OUT_OF_RANGE', message);
       await fillForm();
       await calculate();
-      await vi.waitFor(() => expect(fieldError('insuredAmount')).toBe(message));
-      expect(shown).toEqual([]);
+      await vi.waitFor(() => expect(shown).toEqual([message]));
+
+      expect(fieldError('insuredAmount')).toBeUndefined();
+      expect(result()).toBeNull();
     });
 
     it.each([
