@@ -465,4 +465,152 @@ describe('QuoteNewPageComponent', () => {
       expect(block('vehicle').querySelector('[data-field="patent"] mat-error')).toBeNull();
     });
   });
+
+  describe('Reglas condicionales del vehículo', () => {
+    /** Valores que muestran los selects y la patente. */
+    async function vehicleValues(): Promise<Record<string, string>> {
+      const fields: VehicleField[] = [
+        'vehicleType',
+        'manufacturingYear',
+        'brandId',
+        'modelId',
+        'versionId',
+        'usageType',
+      ];
+      const result: Record<string, string> = {};
+      for (const field of fields) {
+        result[field] = await (await vehicleSelect(field)).getValueText();
+      }
+      result['patent'] = await (await patentInput()).getValue();
+      return result;
+    }
+
+    function formModel() {
+      return fixture.componentInstance['model']();
+    }
+
+    async function fillVehicle(): Promise<void> {
+      await findClient();
+      await choose('vehicleType', 'Auto');
+      await choose('manufacturingYear', '2020');
+      await choose('brandId', 'Volkswagen');
+      await choose('modelId', 'Gol');
+      await choose('versionId', 'Full');
+      await choose('usageType', 'Particular');
+      await (await patentInput()).setValue('ABC123');
+      await fixture.whenStable();
+      expect(await vehicleValues()).toEqual({
+        vehicleType: 'Auto',
+        manufacturingYear: '2020',
+        brandId: 'Volkswagen',
+        modelId: 'Gol',
+        versionId: 'Full',
+        usageType: 'Particular',
+        patent: 'ABC123',
+      });
+    }
+
+    it('AC-FE-02 vacía año, marca, modelo, versión y tipo de uso al cambiar el tipo, sin vaciar la patente', async () => {
+      await fillVehicle();
+      await choose('vehicleType', 'Moto');
+
+      expect(await vehicleValues()).toEqual({
+        vehicleType: 'Moto',
+        manufacturingYear: '',
+        brandId: '',
+        modelId: '',
+        versionId: '',
+        usageType: '',
+        patent: 'ABC123',
+      });
+      expect(formModel()).toMatchObject({
+        vehicleType: 'MOTO',
+        manufacturingYear: '',
+        brandId: '',
+        modelId: '',
+        versionId: '',
+        usageType: '',
+        patent: 'ABC123',
+      });
+    });
+
+    it('AC-FE-02 vacía marca, modelo y versión al cambiar el año', async () => {
+      await fillVehicle();
+      await choose('manufacturingYear', '2025');
+
+      expect(await vehicleValues()).toEqual({
+        vehicleType: 'Auto',
+        manufacturingYear: '2025',
+        brandId: '',
+        modelId: '',
+        versionId: '',
+        usageType: 'Particular',
+        patent: 'ABC123',
+      });
+      expect(formModel()).toMatchObject({ manufacturingYear: 2025, brandId: '', modelId: '', versionId: '' });
+    });
+
+    it('AC-FE-02 vacía modelo y versión al cambiar la marca', async () => {
+      await fillVehicle();
+      await choose('brandId', 'Fiat');
+
+      expect(await vehicleValues()).toEqual({
+        vehicleType: 'Auto',
+        manufacturingYear: '2020',
+        brandId: 'Fiat',
+        modelId: '',
+        versionId: '',
+        usageType: 'Particular',
+        patent: 'ABC123',
+      });
+      expect(formModel()).toMatchObject({ brandId: 3, modelId: '', versionId: '' });
+    });
+
+    it('AC-FE-02 vacía la versión al cambiar el modelo', async () => {
+      await fillVehicle();
+      await choose('modelId', 'Polo');
+
+      expect(await vehicleValues()).toEqual({
+        vehicleType: 'Auto',
+        manufacturingYear: '2020',
+        brandId: 'Volkswagen',
+        modelId: 'Polo',
+        versionId: '',
+        usageType: 'Particular',
+        patent: 'ABC123',
+      });
+      expect(formModel()).toMatchObject({ modelId: 4, versionId: '' });
+    });
+
+    it('AC-FE-02 elegir el mismo valor no vacía los campos dependientes', async () => {
+      await fillVehicle();
+      await choose('brandId', 'Volkswagen');
+
+      expect(await vehicleValues()).toMatchObject({ modelId: 'Gol', versionId: 'Full' });
+    });
+
+    it('AC-FE-08 la patente escrita "abc123" se convierte a mayúsculas mientras se escribe', async () => {
+      await findClient();
+      const input = await patentInput();
+      await (await input.host()).sendKeys('abc123');
+      await fixture.whenStable();
+
+      const element = root.querySelector<HTMLInputElement>('[data-field="patent"] input')!;
+      expect(element.value).toBe('ABC123');
+      expect(formModel()['patent']).toBe('ABC123');
+
+      await input.blur();
+      await fixture.whenStable();
+      expect(block('vehicle').querySelector('[data-field="patent"] mat-error')).toBeNull();
+    });
+
+    it('AC-FE-08 la patente se ve en mayúsculas desde la primera letra', async () => {
+      await findClient();
+      const input = await patentInput();
+      await (await input.host()).sendKeys('a');
+      await fixture.whenStable();
+      expect(await input.getValue()).toBe('A');
+      expect(formModel()['patent']).toBe('A');
+    });
+  });
 });

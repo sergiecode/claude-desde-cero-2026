@@ -124,6 +124,8 @@ Referencias: [Angular Material – Input](https://material.angular.dev/component
 
 Las rutas protegidas se muestran dentro del `ShellComponent` y usan `authGuard`.
 
+**Carga diferida:** cada pantalla se carga con `loadComponent`, para que el bundle inicial no supere el límite de 500 kB que trae el proyecto. No se sube el límite.
+
 ---
 
 ## 4. Autenticación y errores
@@ -136,6 +138,8 @@ Las rutas protegidas se muestran dentro del `ShellComponent` y usan `authGuard`.
   - Otros errores → el componente los recibe y decide; si no los maneja, se muestra el `detail` en un `MatSnackBar`.
   - Sin respuesta del servidor → "No se pudo conectar con el servidor".
 - **Errores de campo:** si el error trae `errors`, cada mensaje se muestra en el `mat-error` del campo correspondiente.
+- **Quién maneja cada error:** cada llamada declara qué `code` maneja la pantalla (por ejemplo, la búsqueda de cliente maneja `CLIENT_NOT_FOUND`, `INVALID_DOCUMENT` y `CLIENT_UNDERAGE`). El `errorInterceptor` no muestra snackbar para esos códigos; todos los demás van al snackbar. Este patrón lo arma la etapa 3 y lo siguen todas las pantallas.
+- **Recarga de la página:** los datos del productor se recuperan de `sessionStorage`; no se llama a `/api/auth/me` al recargar.
 
 ---
 
@@ -180,7 +184,7 @@ Un formulario con Signal Forms, con tres bloques (`mat-card` cada uno). Los bloq
 
 | Orden | Campo | Control | Carga opciones con | Al cambiar, vacía |
 | --- | --- | --- | --- | --- |
-| 1 | Tipo de vehículo | `mat-select` | `GET /catalogs/vehicle-types` (al iniciar) | Todo lo de abajo, la suma asegurada y el resultado |
+| 1 | Tipo de vehículo | `mat-select` | `GET /catalogs/vehicle-types` (al iniciar) | Año, marca, modelo, versión, tipo de uso, la suma asegurada y el resultado. La patente **no** se vacía |
 | 2 | Año de fabricación | `mat-select` | `GET /catalogs/years` | Marca, modelo, versión, suma asegurada |
 | 3 | Marca | `mat-select` | `GET /catalogs/brands` | Modelo, versión, suma asegurada |
 | 4 | Modelo | `mat-select` | `GET /catalogs/models` | Versión, suma asegurada |

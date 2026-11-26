@@ -56,6 +56,19 @@ interface QuoteFormModel {
   patent: string;
 }
 
+type VehicleSelectField = 'vehicleType' | 'manufacturingYear' | 'brandId' | 'modelId';
+
+/**
+ * V4: campos que se vacían cuando el productor cambia cada select de la cascada (frontend.md §5.4).
+ * La patente no depende del tipo de vehículo y no se vacía.
+ */
+const CASCADE_DEPENDENTS: Record<VehicleSelectField, readonly (keyof QuoteFormModel)[]> = {
+  vehicleType: ['manufacturingYear', 'brandId', 'modelId', 'versionId', 'usageType'],
+  manufacturingYear: ['brandId', 'modelId', 'versionId'],
+  brandId: ['modelId', 'versionId'],
+  modelId: ['versionId'],
+};
+
 interface Option<T> {
   value: T;
   label: string;
@@ -236,6 +249,30 @@ export class QuoteNewPageComponent {
       this.quoteForm.documentNumber().valid() &&
       !this.searching(),
   );
+
+  /**
+   * V4: el productor cambió un select del vehículo; se vacían los que dependen de él.
+   * Responde al evento del usuario (no a un `effect`), así que no hay escrituras en cadena.
+   */
+  protected clearDependents(field: VehicleSelectField): void {
+    const cleared = Object.fromEntries(CASCADE_DEPENDENTS[field].map((key) => [key, '']));
+    this.model.update((m) => ({ ...m, ...cleared }));
+  }
+
+  /**
+   * V6: la patente se pasa a mayúsculas mientras se escribe. Se actualizan el input y el modelo,
+   * así el resultado es el mismo sin importar si `FormField` procesa el evento antes o después.
+   */
+  protected uppercasePatent(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const upper = input.value.toUpperCase();
+    if (input.value !== upper) {
+      const { selectionStart, selectionEnd } = input;
+      input.value = upper;
+      input.setSelectionRange(selectionStart, selectionEnd);
+    }
+    this.model.update((m) => (m.patent === upper ? m : { ...m, patent: upper }));
+  }
 
   protected async searchClient(): Promise<void> {
     const { documentType, documentNumber } = this.model();

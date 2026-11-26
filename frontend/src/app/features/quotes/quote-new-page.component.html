@@ -71,7 +71,10 @@
       <div class="quote-new__vehicle">
         <mat-form-field appearance="outline" data-field="vehicleType">
           <mat-label>Tipo de vehículo</mat-label>
-          <mat-select [formField]="quoteForm.vehicleType">
+          <mat-select
+            [formField]="quoteForm.vehicleType"
+            (selectionChange)="clearDependents('vehicleType')"
+          >
             @for (type of vehicleTypes(); track type.value) {
               <mat-option [value]="type.value">{{ type.label }}</mat-option>
             }
@@ -83,7 +86,10 @@
 
         <mat-form-field appearance="outline" data-field="manufacturingYear">
           <mat-label>Año de fabricación</mat-label>
-          <mat-select [formField]="quoteForm.manufacturingYear">
+          <mat-select
+            [formField]="quoteForm.manufacturingYear"
+            (selectionChange)="clearDependents('manufacturingYear')"
+          >
             @for (year of years(); track year) {
               <mat-option [value]="year">{{ year }}</mat-option>
             }
@@ -95,7 +101,10 @@
 
         <mat-form-field appearance="outline" data-field="brandId">
           <mat-label>Marca</mat-label>
-          <mat-select [formField]="quoteForm.brandId">
+          <mat-select
+            [formField]="quoteForm.brandId"
+            (selectionChange)="clearDependents('brandId')"
+          >
             @for (brand of brands(); track brand.id) {
               <mat-option [value]="brand.id">{{ brand.name }}</mat-option>
             }
@@ -107,7 +116,10 @@
 
         <mat-form-field appearance="outline" data-field="modelId">
           <mat-label>Modelo</mat-label>
-          <mat-select [formField]="quoteForm.modelId">
+          <mat-select
+            [formField]="quoteForm.modelId"
+            (selectionChange)="clearDependents('modelId')"
+          >
             @for (vehicleModel of models(); track vehicleModel.id) {
               <mat-option [value]="vehicleModel.id">{{ vehicleModel.name }}</mat-option>
             }
@@ -143,7 +155,7 @@
 
         <mat-form-field appearance="outline" data-field="patent">
           <mat-label>Patente</mat-label>
-          <input matInput [formField]="quoteForm.patent" />
+          <input matInput [formField]="quoteForm.patent" (input)="uppercasePatent($event)" />
           @if (quoteForm.patent().errors().length) {
             <mat-error>{{ quoteForm.patent().errors()[0].message }}</mat-error>
           }
