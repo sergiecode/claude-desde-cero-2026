@@ -18,9 +18,11 @@ import { MatSelectModule } from '@angular/material/select';
 
 import { CatalogApi } from '../../core/api/catalog-api.service';
 import { CLIENT_SEARCH_ERROR_CODES, ClientApi } from '../../core/api/client-api.service';
+import { PlanApi } from '../../core/api/plan-api.service';
 import { asProblemDetails } from '../../core/errors/error.interceptor';
 import { CatalogItem, VehicleType, VehicleUsageType } from '../../core/models/catalog.model';
 import { Client, DocumentType } from '../../core/models/client.model';
+import { InsurancePlan } from '../../core/models/plan.model';
 import {
   DOCUMENT_TYPE_LABELS,
   VEHICLE_TYPE_LABELS,
@@ -54,6 +56,7 @@ interface QuoteFormModel {
   versionId: number | '';
   usageType: VehicleUsageType | '';
   patent: string;
+  planId: number | '';
 }
 
 type VehicleSelectField = 'vehicleType' | 'manufacturingYear' | 'brandId' | 'modelId';
@@ -89,9 +92,9 @@ function optionsOf<T>(r: { hasValue(): boolean; value(): T[] | undefined }): T[]
 }
 
 /**
- * Nueva cotización (frontend.md §5.4). Bloque 1 (Cliente) y bloque 2 (Vehículo, cascada de
- * catálogos); el bloque 3 se completa en las etapas siguientes. Los bloques 2 y 3 quedan
- * deshabilitados sin cliente (C1).
+ * Nueva cotización (frontend.md §5.4). Bloque 1 (Cliente), bloque 2 (Vehículo, cascada de
+ * catálogos) y bloque 3 (Plan; la suma asegurada se agrega en la etapa siguiente). Los bloques
+ * 2 y 3 quedan deshabilitados sin cliente (C1).
  */
 @Component({
   selector: 'app-quote-new-page',
@@ -111,6 +114,7 @@ function optionsOf<T>(r: { hasValue(): boolean; value(): T[] | undefined }): T[]
 export class QuoteNewPageComponent {
   private readonly clientApi = inject(ClientApi);
   private readonly catalogApi = inject(CatalogApi);
+  private readonly planApi = inject(PlanApi);
 
   protected readonly documentTypes = (Object.keys(DOCUMENT_TYPE_LABELS) as DocumentType[]).map(
     (value) => ({ value, label: DOCUMENT_TYPE_LABELS[value] }),
@@ -126,6 +130,7 @@ export class QuoteNewPageComponent {
     versionId: '',
     usageType: '',
     patent: '',
+    planId: '',
   });
 
   /** Documento ingresado; cuando cambia, se descarta el resultado de la búsqueda anterior. */
@@ -206,6 +211,19 @@ export class QuoteNewPageComponent {
     })),
   );
 
+  // Bloque 3 — Plan: los mismos planes para todos los tipos de vehículo (P2), cargados al iniciar.
+  private readonly plansResource = resource({
+    loader: () => this.planApi.list(),
+  });
+
+  protected readonly plans = computed<InsurancePlan[]>(() => optionsOf(this.plansResource));
+
+  /** Plan elegido, para mostrar solo su nombre en el select cerrado. */
+  protected readonly selectedPlan = computed(() => {
+    const planId = this.model().planId;
+    return this.plans().find((plan) => plan.id === planId);
+  });
+
   protected readonly quoteForm = form(this.model, (f) => {
     required(f.documentType, { message: REQUIRED_MESSAGE });
     required(f.documentNumber, { message: REQUIRED_MESSAGE });
@@ -241,6 +259,10 @@ export class QuoteNewPageComponent {
     required(f.usageType, { message: REQUIRED_MESSAGE });
     required(f.patent, { message: REQUIRED_MESSAGE });
     pattern(f.patent, PATENT_PATTERN, { message: INVALID_PATENT_MESSAGE });
+
+    // Bloque 3: un único plan por cotización (P1), deshabilitado sin cliente (C1).
+    disabled(f.planId, noClient);
+    required(f.planId, { message: REQUIRED_MESSAGE });
   });
 
   protected readonly canSearch = computed(

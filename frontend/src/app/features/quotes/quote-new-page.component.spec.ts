@@ -9,9 +9,11 @@ import { provideRouter } from '@angular/router';
 
 import { CatalogApi } from '../../core/api/catalog-api.service';
 import { CLIENT_SEARCH_URL } from '../../core/api/client-api.service';
+import { PlanApi } from '../../core/api/plan-api.service';
 import { ErrorMessageService } from '../../core/errors/error-message.service';
 import { errorInterceptor } from '../../core/errors/error.interceptor';
 import { Client } from '../../core/models/client.model';
+import { InsurancePlan } from '../../core/models/plan.model';
 import { QuoteNewPageComponent } from './quote-new-page.component';
 
 const PERSON: Client = {
@@ -73,6 +75,27 @@ function catalogStub() {
   };
 }
 
+const PLANS: InsurancePlan[] = [
+  { id: 1, code: 'RC', name: 'RC — Responsabilidad civil', description: 'Daños a terceros' },
+  {
+    id: 2,
+    code: 'TERCEROS_COMPLETO',
+    name: 'Terceros completo',
+    description: 'RC + robo e incendio totales y parciales + destrucción total + granizo + cristales',
+  },
+  {
+    id: 3,
+    code: 'TODO_RIESGO',
+    name: 'Todo riesgo',
+    description: 'Terceros completo + daños parciales al propio vehículo',
+  },
+];
+
+/** PlanApi simulado; la URL se prueba en plan-api.service.spec.ts. */
+function planStub() {
+  return { list: vi.fn(async () => PLANS) };
+}
+
 type VehicleField =
   | 'vehicleType'
   | 'manufacturingYear'
@@ -88,10 +111,12 @@ describe('QuoteNewPageComponent', () => {
   let httpTesting: HttpTestingController;
   let shown: string[];
   let catalog: ReturnType<typeof catalogStub>;
+  let planApi: ReturnType<typeof planStub>;
 
   beforeEach(async () => {
     shown = [];
     catalog = catalogStub();
+    planApi = planStub();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -99,6 +124,7 @@ describe('QuoteNewPageComponent', () => {
         provideHttpClientTesting(),
         { provide: ErrorMessageService, useValue: { show: (m: string) => shown.push(m) } },
         { provide: CatalogApi, useValue: catalog },
+        { provide: PlanApi, useValue: planApi },
       ],
     });
     fixture = TestBed.createComponent(QuoteNewPageComponent);
@@ -611,6 +637,91 @@ describe('QuoteNewPageComponent', () => {
       await fixture.whenStable();
       expect(await input.getValue()).toBe('A');
       expect(formModel()['patent']).toBe('A');
+    });
+  });
+
+  describe('Bloque 3 — Plan', () => {
+    function planSelect(): Promise<MatSelectHarness> {
+      return loader.getHarness(MatSelectHarness.with({ selector: '[data-field="planId"] mat-select' }));
+    }
+
+    function planError(): string | undefined {
+      return block('plan').querySelector('[data-field="planId"] mat-error')?.textContent?.trim();
+    }
+
+    it('carga los planes una sola vez al iniciar, sin depender del cliente ni del tipo de vehículo', async () => {
+      expect(planApi.list).toHaveBeenCalledExactlyOnceWith();
+      await findClient();
+      await choose('vehicleType', 'Moto');
+      expect(planApi.list).toHaveBeenCalledTimes(1);
+    });
+
+    it('AC-FE-01 sin cliente, el select de plan está deshabilitado', async () => {
+      expect(await (await planSelect()).isDisabled()).toBe(true);
+    });
+
+    it('AC-FE-01 con cliente se habilita y se vuelve a deshabilitar al cambiar el documento', async () => {
+      await findClient();
+      expect(await (await planSelect()).isDisabled()).toBe(false);
+
+      await (await loader.getHarness(MatInputHarness)).setValue('30123457');
+      await fixture.whenStable();
+      expect(await (await planSelect()).isDisabled()).toBe(true);
+    });
+
+    it('muestra los 3 planes en orden, cada uno con nombre y descripción', async () => {
+      await findClient();
+      const select = await planSelect();
+      await select.open();
+      const options = await select.getOptions();
+      expect(options.length).toBe(3);
+      const texts = await Promise.all(options.map((o) => o.getText()));
+      PLANS.forEach((plan, i) => {
+        expect(texts[i]).toContain(plan.name);
+        expect(texts[i]).toContain(plan.description);
+      });
+      await select.close();
+    });
+
+    it('P2: muestra los 3 planes para todos los tipos de vehículo', async () => {
+      await findClient();
+      for (const type of ['Auto', 'Moto', 'Camioneta', 'Camión']) {
+        await choose('vehicleType', type);
+        const select = await planSelect();
+        await select.open();
+        expect((await select.getOptions()).length).toBe(3);
+        await select.close();
+      }
+    });
+
+    it('P1: elegir un plan guarda su id y el select cerrado muestra solo el nombre', async () => {
+      await findClient();
+      const select = await planSelect();
+      await select.open();
+      await select.clickOptions({ text: /Terceros completo/ });
+      await fixture.whenStable();
+
+      expect(fixture.componentInstance['model']().planId).toBe(2);
+      expect(await select.getValueText()).toBe('Terceros completo');
+      expect(planError()).toBeUndefined();
+    });
+
+    it('es obligatorio: sin plan el campo es inválido y muestra "Completá este campo"', async () => {
+      await findClient();
+      const component = fixture.componentInstance;
+      expect(component['quoteForm'].planId().invalid()).toBe(true);
+
+      // Tocado (como al enviar el formulario), se muestra el mensaje.
+      component['quoteForm'].planId().markAsTouched();
+      await fixture.whenStable();
+      expect(planError()).toBe('Completá este campo');
+
+      const select = await planSelect();
+      await select.open();
+      await select.clickOptions({ text: /Todo riesgo/ });
+      await fixture.whenStable();
+      expect(component['quoteForm'].planId().valid()).toBe(true);
+      expect(planError()).toBeUndefined();
     });
   });
 });

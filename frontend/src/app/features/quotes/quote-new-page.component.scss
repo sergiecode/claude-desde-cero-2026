@@ -46,3 +46,20 @@
   gap: 0 16px;
   padding-top: 16px;
 }
+
+.quote-new__plan {
+  display: grid;
+  grid-template-columns: minmax(220px, 480px);
+  padding-top: 16px;
+}
+
+.quote-new__plan-name {
+  display: block;
+}
+
+.quote-new__plan-description {
+  display: block;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  color: var(--mat-sys-on-surface-variant);
+}

@@ -175,6 +175,24 @@
     <mat-card-header>
       <mat-card-title>Plan y suma asegurada</mat-card-title>
     </mat-card-header>
-    <mat-card-content></mat-card-content>
+    <mat-card-content>
+      <div class="quote-new__plan">
+        <mat-form-field appearance="outline" data-field="planId">
+          <mat-label>Plan</mat-label>
+          <mat-select [formField]="quoteForm.planId">
+            <mat-select-trigger>{{ selectedPlan()?.name }}</mat-select-trigger>
+            @for (plan of plans(); track plan.id) {
+              <mat-option [value]="plan.id">
+                <span class="quote-new__plan-name">{{ plan.name }}</span>
+                <span class="quote-new__plan-description">{{ plan.description }}</span>
+              </mat-option>
+            }
+          </mat-select>
+          @if (quoteForm.planId().errors().length) {
+            <mat-error>{{ quoteForm.planId().errors()[0].message }}</mat-error>
+          }
+        </mat-form-field>
+      </div>
+    </mat-card-content>
   </mat-card>
 </div>
