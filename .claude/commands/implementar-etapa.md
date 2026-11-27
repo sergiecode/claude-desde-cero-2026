@@ -28,11 +28,12 @@ Presentá un plan corto:
 
 ## 3. Implementación
 
+**Antes de delegar en cualquier agente** (en este paso y en el 4), volvé a la raíz del repositorio, la carpeta que contiene `CLAUDE.md`. Si el directorio de trabajo queda en `backend/` o `frontend/`, la memoria del revisor se guarda en un lugar equivocado.
+
 1. Delegá la parte de backend en `backend-dev`. Pasale la etapa, los criterios y las secciones de la SPEC que aplican.
 2. Delegá la parte de frontend en `frontend-dev`, con la misma información. Si el frontend depende de endpoints nuevos, esperá a que el backend esté terminado.
 3. Si una etapa no tiene parte de backend o de frontend, no delegues esa parte.
-4. **Solo en la etapa 1, antes que nada:** creá vos en la raíz del repositorio `.gitignore`, `docker-compose.yml` y `.env.example`, según `docs/spec/README.md` §3 y §4. El `.gitignore` incluye `.env`, `qa-reports/`, `.claude/settings.local.json`, `CLAUDE.local.md`, `backend/target/`, `frontend/node_modules/`, `frontend/dist/` y `frontend/.angular/`. Antes de cualquier `git add`, verificá con `git status` que `.env` no aparezca. No leas ni modifiques `.env`. Si no existe, es lo único que se le pide al usuario (`cp .env.example .env` y completar los valores), y se espera su respuesta antes de verificar.
-
+4. **Solo en la etapa 1, antes que nada:** creá vos en la raíz del repositorio `.gitattributes` (con `* text=auto eol=lf`, para que todos los archivos usen LF en cualquier sistema operativo), `.gitignore`, `docker-compose.yml` y `.env.example`, según `docs/spec/README.md` §3 y §4. El `.gitignore` incluye `.env`, `qa-reports/`, `.claude/settings.local.json`, `CLAUDE.local.md`, `backend/target/`, `frontend/node_modules/`, `frontend/dist/` y `frontend/.angular/`. Antes de cualquier `git add`, verificá con `git status` que `.env` no aparezca. No leas ni modifiques `.env`. Si no existe, es lo único que se le pide al usuario (`cp .env.example .env` y completar los valores), y se espera su respuesta antes de verificar. 
 ## 4. Verificación (siempre automática: el usuario no prueba nada a mano)
 
 1. Pedile a `test-runner` que corra los tests de los criterios de la etapa y todos los tests unitarios. Si es una etapa de backend, también `./mvnw verify`.
@@ -41,7 +42,11 @@ Presentá un plan corto:
    2. Levantá el backend en segundo plano (`cd backend && ./mvnw spring-boot:run`) y esperá, como máximo 3 minutos, a que `http://localhost:8080/v3/api-docs` responda `200`.
    3. Si la etapa tiene frontend, corré `npx ng build` y levantá el frontend en segundo plano (`cd frontend && npm start`). Esperá a que `http://localhost:4200` responda `200`.
    4. Si la etapa agrega endpoints, probá con `curl` al menos un caso exitoso de cada uno contra el backend levantado (con login si hace falta).
-   5. Detené el backend y el frontend que levantaste. La base puede quedar corriendo.
+   5. Detené el backend y el frontend que levantaste **por el puerto que usan** (8080 y 4200), con todo su árbol de procesos. Cortar `mvnw` o `npm` no alcanza, porque `java` y `node` siguen corriendo:
+      - Windows: `netstat -ano | findstr :8080` para obtener el PID y `taskkill //PID <pid> //T //F` (en Git Bash, con doble barra).
+      - macOS y Linux: `lsof -ti :8080 | xargs kill`.
+
+      Verificá que los puertos quedaron libres. La base puede quedar corriendo.
 
    Si algo no arranca, se trata igual que un test fallido.
 3. Si algo falla, devolvé el fallo al agente que corresponde para que lo corrija. Como máximo **2 intentos**; si sigue fallando, detenete y reportá qué falla y por qué.
@@ -49,7 +54,7 @@ Presentá un plan corto:
 
 ## 5. Cierre de la etapa
 
-- **Etapa 1 a 11:** hacé el commit con el formato `feat(stage-$0): <nombre de la etapa en inglés>` y, en el cuerpo, la lista de criterios cubiertos. No hagas `git push`.
+- **Etapa 1 a 11:** hacé el commit con el formato `feat(stage-$0): <nombre de la etapa en inglés>` y, en el cuerpo, la lista de criterios cubiertos. Incluí en el commit `.claude/agent-memory/` si cambió (la memoria del revisor se comparte con el equipo). No hagas `git push`.
 - **Cierre:** preparás vos el entorno, sin pedirle nada al usuario:
   1. `docker compose down -v && docker compose up -d` (base recién creada).
   2. Levantá backend y frontend en segundo plano, como en 4.2, y esperá a que respondan.
