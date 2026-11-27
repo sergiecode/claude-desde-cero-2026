@@ -147,6 +147,18 @@ function optionsOf<T>(r: { hasValue(): boolean; value(): T[] | undefined }): T[]
   return r.hasValue() ? (r.value() ?? []) : [];
 }
 
+/** Igualdad por valor de parámetros planos (o `undefined`) de un recurso de catálogo. */
+function sameParams<T extends object>(a: T | undefined, b: T | undefined): boolean {
+  if (a === b) {
+    return true;
+  }
+  if (!a || !b) {
+    return false;
+  }
+  const keys = Object.keys(a) as (keyof T)[];
+  return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
+}
+
 /**
  * Nueva cotización (frontend.md §5.4). Bloque 1 (Cliente), bloque 2 (Vehículo, cascada de
  * catálogos) y bloque 3 (Plan y suma asegurada). Los bloques 2 y 3 quedan deshabilitados sin
@@ -225,23 +237,38 @@ export class QuoteNewPageComponent {
     loader: ({ params }) => this.catalogApi.years(params),
   });
 
-  private readonly brandsResource = resource({
-    params: () => {
+  /**
+   * Parámetros de marcas y modelos. Son objetos: sin la comparación por valor, `resource` vería
+   * un objeto nuevo con cada cambio del formulario (patente, suma asegurada…) y volvería a pedir
+   * el catálogo. Así solo se pide cuando cambian el tipo, el año o la marca.
+   */
+  private readonly brandsParams = computed(
+    () => {
       const { vehicleType, manufacturingYear } = this.model();
       return vehicleType && manufacturingYear !== ''
         ? { vehicleType, year: manufacturingYear }
         : undefined;
     },
-    loader: ({ params }) => this.catalogApi.brands(params.vehicleType, params.year),
-  });
+    { equal: sameParams },
+  );
 
-  private readonly modelsResource = resource({
-    params: () => {
+  private readonly modelsParams = computed(
+    () => {
       const { vehicleType, manufacturingYear, brandId } = this.model();
       return vehicleType && manufacturingYear !== '' && brandId !== ''
         ? { vehicleType, year: manufacturingYear, brandId }
         : undefined;
     },
+    { equal: sameParams },
+  );
+
+  private readonly brandsResource = resource({
+    params: this.brandsParams,
+    loader: ({ params }) => this.catalogApi.brands(params.vehicleType, params.year),
+  });
+
+  private readonly modelsResource = resource({
+    params: this.modelsParams,
     loader: ({ params }) => this.catalogApi.models(params.vehicleType, params.year, params.brandId),
   });
 
