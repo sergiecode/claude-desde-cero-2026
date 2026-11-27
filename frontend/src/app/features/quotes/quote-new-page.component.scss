@@ -40,21 +40,37 @@
   opacity: 0.5;
 }
 
-.quote-new__vehicle {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 0 16px;
-  padding-top: 16px;
-}
-
+// Vehículo y Plan comparten la misma grilla para que las columnas queden alineadas.
+.quote-new__vehicle,
 .quote-new__plan {
   display: grid;
-  grid-template-columns: minmax(220px, 480px);
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  align-items: start; // sin esto la grilla estira el Plan a la altura de la suma con error
+  gap: 0 16px;
   padding-top: 16px;
+
+  mat-form-field {
+    width: 100%;
+  }
 }
 
+// Plan y suma asegurada ocupan dos columnas cada uno: entra la descripción
+// del plan y el mensaje de error del rango sin cortarse en varias líneas.
+@media (min-width: 720px) {
+  .quote-new__plan > * {
+    grid-column: span 2;
+  }
+}
+
+.quote-new__insured {
+  display: flex;
+  flex-direction: column;
+}
+
+// El error usa subscriptSizing="dynamic", así que el rango va debajo
+// sin superponerse, aunque el mensaje ocupe más de una línea.
 .quote-new__range {
-  margin: -12px 0 8px;
+  margin: 4px 16px 16px;
   font-size: 0.75rem;
   color: var(--mat-sys-on-surface-variant);
 }
