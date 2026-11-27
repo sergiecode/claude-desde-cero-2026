@@ -525,6 +525,26 @@ describe('QuoteNewPageComponent', () => {
       expect(await (await vehicleSelect('versionId')).getValueText()).toBe('Full');
     });
 
+    it('V4 escribir en otros campos no vuelve a pedir marcas ni modelos', async () => {
+      await findClient();
+      await choose('vehicleType', 'Auto');
+      await choose('manufacturingYear', '2020');
+      await choose('brandId', 'Volkswagen');
+      await choose('modelId', 'Gol');
+      await choose('usageType', 'Particular');
+
+      const patent = await patentInput();
+      for (const value of ['A', 'AB', 'ABC', 'ABC1', 'ABC12', 'ABC123']) {
+        await patent.setValue(value);
+        await fixture.whenStable();
+      }
+
+      expect(catalog.brands).toHaveBeenCalledTimes(1);
+      expect(catalog.models).toHaveBeenCalledTimes(1);
+      expect(catalog.versions).toHaveBeenCalledTimes(1);
+      expect(catalog.usageTypes).toHaveBeenCalledTimes(1);
+    });
+
     it('pide los tipos de uso al elegir el tipo y los vuelve a pedir cuando el tipo cambia', async () => {
       await findClient();
       expect(catalog.usageTypes).not.toHaveBeenCalled();
